@@ -158,7 +158,8 @@ export class MapComponent implements OnInit {
   ngOnInit(): void {
     this.map = L.map('map').setView([46.962875, 31.984301], 13);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png', {
+      subdomains: ['a', 'b', 'c', 'd'],
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(this.map);
 
