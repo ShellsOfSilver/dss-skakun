@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "skakun-dss"
+  },
+  "targets": {
+    "skakun-dss": {
+      "hosting": {
+        "skakun-dss": [
+          "skakun-dss"
+        ]
+      }
+    }
+  }
+}
