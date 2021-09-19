@@ -1,1 +1,6 @@
-<div class="map" id="map"></div>
+<div class="map" id="map">
+    <mat-button-toggle-group vertical="true" value="paths" (change)="change($event)" name="fontStyle" aria-label="Font Style">
+        <mat-button-toggle value="paths">Paths</mat-button-toggle>
+        <mat-button-toggle value="saving">Saving</mat-button-toggle>
+    </mat-button-toggle-group>
+</div>

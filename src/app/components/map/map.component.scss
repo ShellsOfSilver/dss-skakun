@@ -1,4 +1,13 @@
 .map {
     height: 100%;
     width: 100%;
+    position: relative;
+
+    .mat-button-toggle-group {
+        z-index: 999;
+        right: 10px;
+        top: 10px;
+        position: absolute;
+        border: 2px solid rgba(0,0,0,0.2);
+    }
 }

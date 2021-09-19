@@ -5,11 +5,11 @@ import { Observable } from 'rxjs';
 import { DSSData, DSSService } from '../../services/dss.service';
 
 @Component({
-  selector: 'app-content',
-  templateUrl: './content.component.html',
-  styleUrls: ['./content.component.scss']
+  selector: 'app-lab_1',
+  templateUrl: './lab_1.component.html',
+  styleUrls: ['./lab_1.component.scss']
 })
-export class ContentComponent implements OnInit {
+export class Lab1Component implements OnInit {
 
   dssData!: Observable<DSSData>;
 
@@ -18,8 +18,6 @@ export class ContentComponent implements OnInit {
   ) { }
 
   ngOnInit(): void {
-    this.dssService.prepareData();
-
     this.dssData = this.dssService.getDssData$();
   }
 }

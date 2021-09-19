@@ -5,7 +5,7 @@ import * as L from 'leaflet';
 
 import { BehaviorSubject, Observable } from 'rxjs';
 
-import { POINTS, D, CENTER, N_PROGRAMS } from '../data';
+import { POINTS, D, CENTER, N_PROGRAMS, PATHS } from '../data';
 
 export interface DSSData {
     init: boolean;
@@ -20,6 +20,7 @@ export interface DSSData {
     XSum: number;
     Qmax: number;
     Qij: Array<{ [key: string]: number }>;
+    viewMode: VIEW_MODE;
     tables: {
         NQ_F: {
             columns: Array<string>,
@@ -33,8 +34,22 @@ export interface DSSData {
             columns: Array<string>,
             data: Array<any>
         },
+        Distance: {
+            columns: Array<string>,
+            data: Array<any>
+        },
+        SavingTable: {
+            columns: Array<string>,
+            data: Array<any>
+        },
+        SavingPath: {
+            columns: Array<string>,
+            data: Array<any>
+        },
     },
 };
+
+export type VIEW_MODE = 'paths' | 'saving';
 
 @Injectable({
     providedIn: 'root',
@@ -43,6 +58,7 @@ export class DSSService {
 
     private Dm = D;
     private dssData: BehaviorSubject<DSSData>;
+    isEuclide = false;
 
     constructor(
         private http: HttpClient
@@ -60,6 +76,7 @@ export class DSSService {
             XSum: 0,
             Qmax: 0,
             Qij: [{}],
+            viewMode: 'paths',
             tables: {
                 NQ_F: {
                     columns: [''],
@@ -75,6 +92,8 @@ export class DSSService {
                 },
             }
         } as DSSData);
+
+        this.prepareData();
     }
 
     private getX() {
@@ -143,6 +162,90 @@ export class DSSService {
         return F;
     }
 
+    private getDistance2Point() {
+        const points = [CENTER, ...POINTS];
+        const data = [];
+        const columns: Array<string> = ['N'];
+
+        for (let i = 0; i < points.length; i++) {
+            columns.push(`${points[i].key}`);
+            const row = { N: points[i].key } as any;
+            for (let j = 0; j < points.length; j++) {
+                if (this.isEuclide) {
+                    row[points[j].key] = +Math.sqrt(Math.pow((points[i].x - points[j].x), 2) + Math.pow((points[i].y - points[j].y), 2)).toFixed(4);
+                } else {
+                    const el = Object.values(PATHS).find(e => e.point === `№${points[i].key} [${points[i].x}, ${points[i].y}] - №${points[j].key} [${points[j].x}, ${points[j].y}]`);
+                    row[points[j].key] = el?.distance;
+                }
+            }
+            data.push(row);
+        }
+
+        return { data, columns };
+    }
+
+    private calcSavingTable(distance: Array<any>) {
+        const data: Array<any> = [];
+        const columns: Array<string> = ['N', 'L1', 'L2', 'Distance'];
+
+        const keys = Object.keys(distance[0]).sort();
+
+        for (let i = 0; i < distance.length; i++) {
+            for (let j = 0; j < distance.length; j++) {
+                if (+keys[j] && +keys[i] && !(data.find(e => e.L1 === keys[i] && e.L2 === keys[j]) || data.find(e => e.L1 === keys[j] && e.L2 === keys[i]) || keys[j] === keys[i])) {
+                    const dis = +(distance[i][keys[0]] + distance[j][keys[0]] - distance[i][keys[i]]).toFixed(4);
+                    data.push({
+                        L1: keys[i],
+                        L2: keys[j],
+                        Distance: dis
+                    });
+                }
+            }
+        }
+
+        data.sort((a, b) => a.Distance > b.Distance ? -1 : 1);
+
+        return {
+            columns,
+            data: data.map((e, inx) => ({ ...e, N: inx + 1 }))
+        };
+    }
+
+    private calcSavingPath(distance: Array<any>) {
+        const data: Array<any> = ['0'];
+        const columns: Array<string> = ['Path'];
+
+        for (const dis of distance) {
+            if (!(data.includes(dis.L1) || data.includes(dis.L2))) {
+                data.push(dis.L1);
+                data.push(dis.L2);
+            }
+        }
+
+        data.push('0');
+
+        return {
+            columns,
+            data: [{
+                Path: data.join('-')
+            }]
+        };
+    }
+
+    setEuclide(status: boolean) {
+        this.isEuclide = status;
+        setTimeout(() => {
+            this.prepareData();
+        });
+    }
+
+    setMapView(viewMode: VIEW_MODE) {
+        this.dssData.next({
+            ...this.dssData.value,
+            viewMode
+        });
+    }
+
     getDssData$(): Observable<DSSData> {
         return this.dssData.asObservable();
     }
@@ -152,6 +255,9 @@ export class DSSService {
         const F = this.getFs(NQ);
         const { XSum, X, Xnorm } = this.getX();
         const { Qij, Qmax } = this.getQij(F, Xnorm);
+        const distance = this.getDistance2Point();
+        const savingTable = this.calcSavingTable(distance.data);
+        const savingPath = this.calcSavingPath(savingTable.data);
 
         if (Qmax > this.Dm) {
             console.log('-- Updated D --');
@@ -171,6 +277,7 @@ export class DSSService {
             Xnorm,
             Qij,
             Qmax,
+            viewMode: this.dssData.value.viewMode,
             tables: {
                 NQ_F: {
                     columns: ['N', 'η', 'F'],
@@ -193,6 +300,9 @@ export class DSSService {
                     columns: ['D', 'X_sum', 'Q_max'],
                     data: [{ D: D, X_sum: XSum, Q_max: Qmax }],
                 },
+                Distance: distance,
+                SavingTable: savingTable,
+                SavingPath: savingPath,
             }
         } as DSSData;
 
