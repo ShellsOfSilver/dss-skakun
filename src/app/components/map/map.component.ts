@@ -92,7 +92,7 @@ export class MapComponent implements AfterViewInit {
             iconUrl: 'assets/pin.svg',
 
             iconSize: [50, 50],
-            iconAnchor: [25, 25],
+            iconAnchor: [25, 50],
           })
         }
       ));

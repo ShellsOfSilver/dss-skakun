@@ -90,6 +90,18 @@ export class DSSService {
                     columns: [''],
                     data: [{}]
                 },
+                Distance: {
+                    columns: [''],
+                    data: [{}]
+                },
+                SavingTable: {
+                    columns: [''],
+                    data: [{}]
+                },
+                SavingPath: {
+                    columns: [''],
+                    data: [{}]
+                },
             }
         } as DSSData);
 
@@ -192,12 +204,12 @@ export class DSSService {
 
         for (let i = 0; i < distance.length; i++) {
             for (let j = 0; j < distance.length; j++) {
-                if (+keys[j] && +keys[i] && !(data.find(e => e.L1 === keys[i] && e.L2 === keys[j]) || data.find(e => e.L1 === keys[j] && e.L2 === keys[i]) || keys[j] === keys[i])) {
-                    const dis = +(distance[i][keys[0]] + distance[j][keys[0]] - distance[i][keys[i]]).toFixed(4);
+                if (!(data.find(e => e.L1 === keys[i] && e.L2 === keys[j]) || data.find(e => e.L1 === keys[j] && e.L2 === keys[i]) || keys[j] === keys[i])) {
+                    const dis = +(distance[i][keys[0]] + distance[j][keys[0]] - distance[i][keys[j]]).toFixed(4);
                     data.push({
-                        L1: keys[i],
-                        L2: keys[j],
-                        Distance: dis
+                        L1: keys[j],
+                        L2: keys[i],
+                        Distance: Math.abs(dis)
                     });
                 }
             }
@@ -212,22 +224,48 @@ export class DSSService {
     }
 
     private calcSavingPath(distance: Array<any>) {
-        const data: Array<any> = ['0'];
+        const savingPath: Array<any> = ['0'];
         const columns: Array<string> = ['Path'];
+        let current = distance[0];
 
-        for (const dis of distance) {
-            if (!(data.includes(dis.L1) || data.includes(dis.L2))) {
-                data.push(dis.L1);
-                data.push(dis.L2);
+        const addVal = (arr: Array<any>) => {
+            if (arr.length) {
+                arr = arr.filter(e => e.L1 !== current.L1 && e.L2 !== current.L1);
+
+                if (!savingPath.includes(current.L1)) {
+                    savingPath.push(current.L1);
+                }
+
+                if (!savingPath.includes(current.L2)) {
+                    savingPath.push(current.L2);
+                }
+
+                const old = JSON.parse(JSON.stringify(current));
+
+                current = arr.find(e => e.L1 === current.L2 || e.L2 === current.L2);
+
+                if (!current) {
+                    return;
+                }
+
+                if (old.L2 === current.L2) {
+                    const tmp = current.L1;
+                    current.L1 = current.L2;
+                    current.L2 = tmp;
+                }
+
+                addVal(arr);
             }
-        }
+        };
 
-        data.push('0');
+        addVal([...distance]);
+
+        savingPath.push('0');
 
         return {
             columns,
             data: [{
-                Path: data.join('-')
+                Path: savingPath.join('-')
             }]
         };
     }
