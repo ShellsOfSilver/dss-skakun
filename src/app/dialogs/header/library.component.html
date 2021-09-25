@@ -1,0 +1,27 @@
+<h2 mat-dialog-title *ngIf="!isLoading">
+    <span>Library</span>
+    <button mat-icon-button (click)="createDocument()">
+        <mat-icon>add</mat-icon>
+    </button>
+</h2>
+<mat-dialog-content class="mat-typography">
+    <mat-spinner *ngIf="isLoading"></mat-spinner>
+    <div *ngIf="isError">
+        Failed to retrieve data try again.
+    </div>
+    <div *ngIf="!isLoading && !isError" class="document-container">
+        <mat-card *ngFor="let doc of documents">
+            <mat-card-title>{{doc?.NAME}}</mat-card-title>
+            <mat-card-subtitle>{{doc?.updated | date}}, D: {{doc?.D}}</mat-card-subtitle>
+            <mat-card-actions>
+                <button (click)="editDocument(doc)" mat-icon-button>
+                    <mat-icon>edit</mat-icon>
+                </button>
+                <button (click)="selectDocument(doc)" mat-button>Select</button>
+            </mat-card-actions>
+        </mat-card>
+    </div>
+</mat-dialog-content>
+<mat-dialog-actions align="end" *ngIf="!isLoading">
+    <button mat-button mat-dialog-close>Close</button>
+</mat-dialog-actions>

@@ -1,15 +1,15 @@
-<mat-tab-group mat-align-tabs="start">
-    <mat-tab label="Map" class="tab">
+<mat-tab-group mat-align-tabs="start" (selectedTabChange)="selectedTabChange($event)">
+    <mat-tab [label]="pages[0]">
         <div class="tab">
             <app-map></app-map>
         </div>
     </mat-tab>
-    <mat-tab label="Lab 1">
+    <mat-tab [label]="pages[1]">
         <div class="tab">
             <app-lab_1></app-lab_1>
         </div>
     </mat-tab>
-    <mat-tab label="Lab 2-3">
+    <mat-tab [label]="pages[2]">
         <div class="tab">
             <app-lab_2></app-lab_2>
         </div>

@@ -1,4 +1,7 @@
 <mat-toolbar color="primary">
-    <span>Skakun 601 - v14</span>
-    <mat-slide-toggle (change)="change($event)">Euclide</mat-slide-toggle>
+    <span>{{(dssData | async)?.NAME}}</span>
+    <div class="side-action">
+        <mat-slide-toggle (change)="change($event)">Euclide</mat-slide-toggle>
+        <button mat-raised-button (click)="openLibrary()">Library</button>
+    </div>
 </mat-toolbar>

@@ -1,0 +1,38 @@
+.mat-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.side-action {
+    display: flex;
+    align-items: center;
+
+    .mat-raised-button {
+        margin-left: 16px;
+    }
+}
+
+.mat-dialog-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.document-container {
+    min-width: 400px;
+    padding: 10px;
+
+    .mat-card {
+        margin-bottom: 10px;
+        
+        .mat-card-actions {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .mat-card-subtitle {
+            margin-bottom: 0;
+        }
+    }
+}

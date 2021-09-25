@@ -2,3 +2,12 @@
     display: flex;
     justify-content: space-between;
 }
+
+.side-action {
+    display: flex;
+    align-items: center;
+
+    .mat-raised-button {
+        margin-left: 16px;
+    }
+}

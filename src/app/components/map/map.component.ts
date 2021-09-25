@@ -2,19 +2,14 @@ import { AfterViewInit, Component } from '@angular/core';
 
 import { MatButtonToggleChange } from '@angular/material/button-toggle';
 
-import { Observable } from 'rxjs';
+import { combineLatest, Observable } from 'rxjs';
 
 import * as L from 'leaflet';
 import * as polyline from 'polyline';
 
-import { DSSData, DSSService, VIEW_MODE } from '../../services/dss.service';
-import { PATHS } from '../../data';
-
-interface Coord {
-  key: number;
-  x: number;
-  y: number;
-}
+import { DSSService } from '../../services/dss.service';
+import { DSSData, PAGE_NAME } from '../../models/dss';
+import { map } from 'rxjs/operators';
 
 @Component({
   selector: 'app-map',
@@ -56,37 +51,9 @@ export class MapComponent implements AfterViewInit {
   }
 
   private async addMarkers(dss: DSSData) {
-    let maxX: number = Number.MIN_SAFE_INTEGER;
-    let minX: number = Number.MAX_SAFE_INTEGER;
-    let maxY: number = Number.MIN_SAFE_INTEGER;
-    let minY: number = Number.MAX_SAFE_INTEGER;
-
-    for (let i = 0; i < dss.POINTS.length; i++) {
-      const item = dss.POINTS[i];
-
-      if (!maxX || maxX < item.x) {
-        maxX = item.x;
-      }
-
-      if (!maxY || maxY < item.y) {
-        maxY = item.y;
-      }
-
-      if (!minX || minX > item.x) {
-        minX = item.x;
-      }
-
-      if (!minY || minY > item.y) {
-        minY = item.y;
-      }
-    }
-
     dss.POINTS.forEach(point => {
-      const lat = 46.948025 + ((point.x - minX) * 0.00045);
-      const lng = 31.961801 + ((point.y - minY) * 0.00075);
-
       this.markers.push(L.marker(
-        L.latLng(lat, lng),
+        L.latLng(point.x, point.y),
         {
           icon: L.icon({
             iconUrl: 'assets/pin.svg',
@@ -102,8 +69,8 @@ export class MapComponent implements AfterViewInit {
 
     this.markers.push(L.marker(
       L.latLng(
-        46.948025 + ((dss.CENTER.x - minX) * 0.00045),
-        31.961801 + ((dss.CENTER.y - minY) * 0.00075)
+        dss.CENTER.x,
+        dss.CENTER.y
       ),
       {
         icon: L.icon({
@@ -125,14 +92,14 @@ export class MapComponent implements AfterViewInit {
     const paths = dss.tables.SavingPath.data[0]['Path'];
 
     for (const mark of this.markers) {
-      for (const mark1 of this.markers) {
-        const key1 = mark.getLatLng().lat + '_' + mark.getLatLng().lng + '*' + mark1.getLatLng().lat + '_' + mark1.getLatLng().lng;
-        if (!(PATHS as any)[key1]) {
-          return alert('Not all paths found, please update PATHS in data.ts');
+      for (const otherMarker of this.markers) {
+        const key1 = mark.getLatLng().lat + '_' + mark.getLatLng().lng + '*' + otherMarker.getLatLng().lat + '_' + otherMarker.getLatLng().lng;
+        if (!dss.PATHS.find(e => e.ID === key1)) {
+          return alert('Not all paths found, please update PATHS in edit mode');
         }
 
         if (this.dssService.isEuclide && dss.viewMode === 'paths') {
-          const path = [[mark.getLatLng().lat, mark.getLatLng().lng], [mark1.getLatLng().lat, mark1.getLatLng().lng]];
+          const path = [[mark.getLatLng().lat, mark.getLatLng().lng], [otherMarker.getLatLng().lat, otherMarker.getLatLng().lng]];
           if (!geometries.includes(JSON.stringify(path))) {
             geometries.push(JSON.stringify(path));
             const pLine = L.polyline(path as any);
@@ -144,7 +111,7 @@ export class MapComponent implements AfterViewInit {
     }
 
     if (!this.dssService.isEuclide && dss.viewMode === 'paths') {
-      Object.values(PATHS).forEach((e: any) => {
+      Object.values(dss.PATHS).forEach((e: any) => {
         if (!geometries.includes(e['geometry'])) {
           geometries.push(e['geometry']);
 
@@ -173,11 +140,11 @@ export class MapComponent implements AfterViewInit {
       this.pLineGroup.push(pLine);
       pLine.addTo(this.map);
     } else if (!this.dssService.isEuclide && dss.viewMode === 'saving') {
-      const PATHSValues = Object.values(PATHS);
+      const PATHSValues = Object.values(dss.PATHS);
 
       `${paths}`.split('-').forEach(path => {
-        const el = PATHSValues.find(e => e.point.startsWith(`№${path}`))!;
-        const pLine = L.polyline(polyline.decode(el['geometry']) as any, {
+        const el = PATHSValues.find(e => e.points[0] === +path)!;
+        const pLine = L.polyline(polyline.decode(el.geometry) as any, {
           color: 'red'
         });
         this.pLineGroup.push(pLine);
@@ -194,14 +161,18 @@ export class MapComponent implements AfterViewInit {
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(this.map);
 
-    this.dssService.getDssData$()
-      .subscribe((data) => {
-        if (data?.init) {
+    combineLatest([
+      this.dssService.getDssData$(),
+      this.dssService.getCurrentPage$()
+    ]).pipe(
+      map(([data, page]) => {
+        if (page === PAGE_NAME.Map && data.init) {
           this.clearPLineGroup();
           this.clearMarkers();
           this.addMarkers(data);
         }
-      });
+      })
+    ).subscribe();
   }
 
   change(event: MatButtonToggleChange) {

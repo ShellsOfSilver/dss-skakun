@@ -1,3 +1,4 @@
+import { AngularFirestore } from '@angular/fire/firestore';
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 
@@ -5,70 +6,34 @@ import * as L from 'leaflet';
 
 import { BehaviorSubject, Observable } from 'rxjs';
 
-import { POINTS, D, CENTER, N_PROGRAMS, PATHS } from '../data';
-
-export interface DSSData {
-    init: boolean;
-    D: number;
-    POINTS: Array<{ key: number, x: number, y: number }>;
-    CENTER: { key: number, x: number, y: number };
-    N_PROGRAMS: number;
-    NQ: Array<number>;
-    F: Array<number>;
-    X: Array<number>;
-    Xnorm: Array<number>;
-    XSum: number;
-    Qmax: number;
-    Qij: Array<{ [key: string]: number }>;
-    viewMode: VIEW_MODE;
-    tables: {
-        NQ_F: {
-            columns: Array<string>,
-            data: Array<any>
-        },
-        Q: {
-            columns: Array<string>,
-            data: Array<any>
-        },
-        Other: {
-            columns: Array<string>,
-            data: Array<any>
-        },
-        Distance: {
-            columns: Array<string>,
-            data: Array<any>
-        },
-        SavingTable: {
-            columns: Array<string>,
-            data: Array<any>
-        },
-        SavingPath: {
-            columns: Array<string>,
-            data: Array<any>
-        },
-    },
-};
-
-export type VIEW_MODE = 'paths' | 'saving';
+import { DSSData, PAGE_NAME, Path, Point, VIEW_MODE } from '../models/dss';
+import { map, switchMap } from 'rxjs/operators';
 
 @Injectable({
     providedIn: 'root',
 })
 export class DSSService {
 
-    private Dm = D;
+    private Dm = 0;
+    private originD = 0;
     private dssData: BehaviorSubject<DSSData>;
-    isEuclide = false;
+
+    public isEuclide = false;
+    public currentPage: BehaviorSubject<PAGE_NAME>;
 
     constructor(
-        private http: HttpClient
+        private afStore: AngularFirestore,
+        private http: HttpClient,
     ) {
-        this.dssData = new BehaviorSubject({
+        this.currentPage = new BehaviorSubject<PAGE_NAME>(PAGE_NAME.Map);
+        this.dssData = new BehaviorSubject<DSSData>({
             init: false,
             D: this.Dm,
-            POINTS,
-            CENTER,
-            N_PROGRAMS,
+            POINTS: [],
+            CENTER: { key: 0, x: 0, y: 0 },
+            PATHS: [],
+            N_PROGRAMS: 0,
+            NAME: '...',
             NQ: [0],
             F: [0],
             X: [0],
@@ -103,35 +68,33 @@ export class DSSService {
                     data: [{}]
                 },
             }
-        } as DSSData);
-
-        this.prepareData();
+        });
     }
 
-    private getX() {
+    private getX(points: Array<Point>) {
         let XSum = 0;
 
         const X: Array<number> = [];
         const Xnorm: Array<number> = [];
 
-        for (let i = 0; i < POINTS.length; i++) {
+        for (let i = 0; i < points.length; i++) {
             const value = Math.random();
 
             X.push(value);
             XSum += value;
         }
 
-        for (let i = 0; i < POINTS.length; i++) {
+        for (let i = 0; i < points.length; i++) {
             Xnorm.push(X[i] / XSum);
         }
 
         return { XSum: +XSum.toFixed(4), X, Xnorm };
     }
 
-    private getNQ() {
+    private getNQ(nPrograms: number) {
         const nq: Array<number> = [];
 
-        for (let i = 0; i < N_PROGRAMS; i++) {
+        for (let i = 0; i < nPrograms; i++) {
             nq.push(+Math.random().toFixed(4));
         }
 
@@ -174,10 +137,62 @@ export class DSSService {
         return F;
     }
 
-    private getDistance2Point() {
-        const points = [CENTER, ...POINTS];
+    private pointsToScreenXY(points: Array<Point>) {
+        points = JSON.parse(JSON.stringify(points));
+
+        // https://stackoverflow.com/a/53827343
+        const radius = 6371;
+
+        const lats = points.map((p) => p.x);
+        const lngs = points.map((p) => p.y);
+
+        const p0 = {
+            scrX: 0,
+            scrY: 0,
+            lat: Math.max.apply(null, lats),
+            lng: Math.max.apply(null, lngs),
+        } as any;
+
+        const p1 = {
+            scrX: 1000,
+            scrY: 1000,
+            lat: Math.min.apply(null, lats),
+            lng: Math.min.apply(null, lngs)
+        } as any;
+
+        const latlngToGlobalXY = (lat: number, lng: number) => {
+            let x = radius * lng * Math.cos((p0.lat + p1.lat) / 2);
+            let y = radius * lat;
+            return { x: x, y: y } as any;
+        };
+
+        p0.pos = latlngToGlobalXY(p0.lat, p0.lng);
+        p1.pos = latlngToGlobalXY(p1.lat, p1.lng);
+
+        const latlngToScreenXY = (lat: number, lng: number) => {
+            let pos = latlngToGlobalXY(lat, lng);
+            pos.perX = ((pos.x - p0.pos.x) / (p1.pos.x - p0.pos.x));
+            pos.perY = ((pos.y - p0.pos.y) / (p1.pos.y - p0.pos.y));
+
+            return {
+                x: p0.scrX + (p1.scrX - p0.scrX) * pos.perX,
+                y: p0.scrY + (p1.scrY - p0.scrY) * pos.perY
+            }
+        }
+
+        return points.map(e => {
+            const res = latlngToScreenXY(e.x, e.y);
+            return { ...e, ...res };
+        });
+    }
+
+    private getDistance2Point(points: Array<Point>, paths: Array<Path>) {
         const data = [];
         const columns: Array<string> = ['N'];
+
+        if (this.isEuclide) {
+            points = this.pointsToScreenXY(points);
+        }
 
         for (let i = 0; i < points.length; i++) {
             columns.push(`${points[i].key}`);
@@ -186,7 +201,7 @@ export class DSSService {
                 if (this.isEuclide) {
                     row[points[j].key] = +Math.sqrt(Math.pow((points[i].x - points[j].x), 2) + Math.pow((points[i].y - points[j].y), 2)).toFixed(4);
                 } else {
-                    const el = Object.values(PATHS).find(e => e.point === `№${points[i].key} [${points[i].x}, ${points[i].y}] - №${points[j].key} [${points[j].x}, ${points[j].y}]`);
+                    const el = Object.values(paths).find(e => e.points[0] === points[i].key && e.points[1] === points[j].key);
                     row[points[j].key] = el?.distance;
                 }
             }
@@ -273,7 +288,7 @@ export class DSSService {
     setEuclide(status: boolean) {
         this.isEuclide = status;
         setTimeout(() => {
-            this.prepareData();
+            this.prepareData({ ...this.dssData.value, D: this.originD });
         });
     }
 
@@ -288,12 +303,18 @@ export class DSSService {
         return this.dssData.asObservable();
     }
 
-    prepareData() {
-        const NQ = this.getNQ();
+    getCurrentPage$(): Observable<PAGE_NAME> {
+        return this.currentPage.asObservable();
+    }
+
+    prepareData(doc: Partial<DSSData>) {
+        this.Dm = doc.D!;
+
+        const NQ = this.getNQ(doc.N_PROGRAMS!);
         const F = this.getFs(NQ);
-        const { XSum, X, Xnorm } = this.getX();
+        const { XSum, X, Xnorm } = this.getX(doc.POINTS!);
         const { Qij, Qmax } = this.getQij(F, Xnorm);
-        const distance = this.getDistance2Point();
+        const distance = this.getDistance2Point([doc.CENTER!, ...doc.POINTS!], doc.PATHS!);
         const savingTable = this.calcSavingTable(distance.data);
         const savingPath = this.calcSavingPath(savingTable.data);
 
@@ -303,11 +324,9 @@ export class DSSService {
         }
 
         const data = {
+            ...doc,
             init: true,
-            POINTS,
             D: this.Dm,
-            CENTER,
-            N_PROGRAMS,
             NQ,
             F,
             X,
@@ -336,7 +355,7 @@ export class DSSService {
                 },
                 Other: {
                     columns: ['D', 'X_sum', 'Q_max'],
-                    data: [{ D: D, X_sum: XSum, Q_max: Qmax }],
+                    data: [{ D: doc.D!, X_sum: XSum, Q_max: Qmax }],
                 },
                 Distance: distance,
                 SavingTable: savingTable,
@@ -346,6 +365,53 @@ export class DSSService {
 
         console.log('data::', data);
         this.dssData.next(data);
+    }
+
+    loadLibrary() {
+        return this.afStore
+            .collection('library', ref => ref.orderBy('updated'))
+            .get();
+    }
+
+    setCurrentDocument(id: string) {
+        let doc = {
+            ID: id,
+        } as Partial<DSSData>;
+
+        return this.afStore
+            .collection('library')
+            .doc(id)
+            .get()
+            .pipe(
+                switchMap(res => {
+                    doc = {
+                        ...doc,
+                        ...res.data() as Partial<DSSData>
+                    };
+                    this.originD = doc.D!;
+
+                    return this.afStore
+                        .collection('library')
+                        .doc(id)
+                        .collection('points')
+                        .get()
+                }),
+                switchMap(res => {
+                    const POINTS = res.docs.map(e => e.data() as Point);
+                    doc.CENTER = POINTS.find(e => e.key === 0);
+                    doc.POINTS = POINTS.filter(e => e.key !== 0);
+
+                    return this.afStore
+                        .collection('library')
+                        .doc(id)
+                        .collection('paths')
+                        .get()
+                }),
+                map(res => {
+                    doc.PATHS = res.docs.map(e => ({ ...e.data() as Path, ID: e.id }));
+                    this.prepareData(doc);
+                }),
+            );
     }
 
     getPath(from: L.LatLng, to: L.LatLng) {
