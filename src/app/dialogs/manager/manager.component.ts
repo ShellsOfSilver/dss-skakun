@@ -276,6 +276,7 @@ export class ManagerDialog implements AfterViewInit, OnDestroy {
 
   async save() {
     if (this.validate()) {
+      console.log(this.form);
       return;
     }
 
@@ -297,6 +298,8 @@ export class ManagerDialog implements AfterViewInit, OnDestroy {
       setPoint(point);
     }
 
+    const localPath: Array<Path> = [];
+
     try {
       let i = 0;
 
@@ -304,21 +307,28 @@ export class ManagerDialog implements AfterViewInit, OnDestroy {
         for (const point1 of points) {
           const key1 = point.x + '_' + point.y + '*' + point1.x + '_' + point1.y;
           const key2 = point1.x + '_' + point1.y + '*' + point.x + '_' + point.y;
+          const el = this.paths.find(e => e.ID === key1);
 
-          if (!this.paths.find(e => e.ID === key1)) {
+          if (!el) {
             const res = await this.dssService.getPath(point, point1).toPromise() as any;
-            this.paths.push({
+            const body1 = {
               ID: key1,
               geometry: res.routes[0].geometry,
               distance: res.routes[0].distance,
               points: [point.key, point1.key]
-            });
-            this.paths.push({
+            };
+            const body2 = {
               ID: key2,
               geometry: res.routes[0].geometry,
               distance: res.routes[0].distance,
               points: [point1.key, point.key]
-            });
+            };
+
+            this.paths.push(body1);
+            this.paths.push(body2);
+            localPath.push(body1);
+          } else {
+            localPath.push(el);
           }
           i++;
           this.isLoading = Math.min((i / (points.length * points.length)) * 100, 100);
@@ -328,7 +338,7 @@ export class ManagerDialog implements AfterViewInit, OnDestroy {
       await this.dssService.setDocument({
         ...this.documentData,
         POINTS: points,
-        PATHS: this.paths,
+        PATHS: localPath,
         NAME: value.NAME,
         N_PROGRAMS: value.N_PROGRAMS,
         D: value.D,

@@ -10,4 +10,16 @@
         position: absolute;
         border: 2px solid rgba(0,0,0,0.2);
     }
+
+    .saving-path {
+        z-index: 1003;
+        position: absolute;
+        font-weight: bold;
+        left: 50%;
+        top: 10px;
+        transform: translateY(-50%);
+        background: white;
+        padding: 0 4px;
+        border-radius: 4px;
+    }
 }

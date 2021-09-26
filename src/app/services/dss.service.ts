@@ -366,19 +366,53 @@ export class DSSService {
         this.dssData.next(data);
     }
 
-    chunkArray<T>(arr: T[], size = 1500) {
-        const tempArray = [];
+    chunkArray(input: Array<any>, bytesSize = 1000000) {
+        const getObjectSize = (obj: any) => {
+            try {
+                const str = JSON.stringify(obj);
+                return new Blob([str]).size;
+            } catch (error) {
+                return 0;
+            }
+        };
 
-        for (let index = 0; index < arr.length; index += size) {
-            tempArray.push(arr.slice(index, index + size));
+        const output: Array<any> = [];
+        let outputSize = 0;
+        let outputFreeIndex = 0;
+
+        if (!input || input.length === 0 || bytesSize <= 0) {
+            return output;
         }
 
-        return tempArray;
+        for (let obj of input) {
+            const objSize = getObjectSize(obj);
+            const fitsIntoLastChunk = (outputSize + objSize) <= bytesSize;
+
+            if (fitsIntoLastChunk) {
+                if (!Array.isArray(output[outputFreeIndex])) {
+                    output[outputFreeIndex] = [];
+                }
+
+                output[outputFreeIndex].push(obj);
+                outputSize += objSize;
+            } else {
+                if (output[outputFreeIndex]) {
+                    outputFreeIndex++;
+                    outputSize = 0;
+                }
+
+                output[outputFreeIndex] = [];
+                output[outputFreeIndex].push(obj);
+                outputSize += objSize;
+            }
+        }
+
+        return output;
     }
 
     loadLibrary() {
         return this.afStore
-            .collection('library', ref => ref.orderBy('updated'))
+            .collection('library', ref => ref.orderBy('updated', 'desc'))
             .get();
     }
 
@@ -408,28 +442,14 @@ export class DSSService {
                     };
                     this.originD = doc.D!;
 
-                    return this.afStore
-                        .collection('library')
-                        .doc(id)
-                        .collection('points')
-                        .get()
-                }),
-                switchMap(res => {
-                    let POINTS: Array<Point> = [];
-
-                    res.docs.forEach(e => {
-                        const points = e.data().data as Array<Point>;
-                        POINTS = POINTS.concat(points);
-                    });
-
-                    doc.CENTER = POINTS.find(e => e.key === 0);
-                    doc.POINTS = POINTS.filter(e => e.key !== 0);
+                    doc.CENTER = doc.POINTS!.find(e => e.key === 0);
+                    doc.POINTS = doc.POINTS!.filter(e => e.key !== 0);
 
                     return this.afStore
                         .collection('library')
                         .doc(id)
                         .collection('paths')
-                        .get()
+                        .get();
                 }),
                 map(res => {
                     let PATHS: Array<Path> = [];
@@ -466,24 +486,16 @@ export class DSSService {
                 .add({
                     NAME: doc.NAME,
                     N_PROGRAMS: doc.N_PROGRAMS,
+                    POINTS: doc.POINTS,
                     D: doc.D,
                     updated: doc.updated,
                 })
                 .then(async res => {
                     id = res.id;
-
-                    const points = this.chunkArray(doc.POINTS!);
                     const paths = this.chunkArray(doc.PATHS!);
 
-                    for (const point of points) {
-                        await this.afStore
-                            .collection('library')
-                            .doc(id)
-                            .collection('points')
-                            .add({ data: point });
-                    }
-
                     for (const path of paths) {
+                        console.log(path);
                         await this.afStore
                             .collection('library')
                             .doc(id)
@@ -498,37 +510,13 @@ export class DSSService {
                 .set({
                     NAME: doc.NAME,
                     N_PROGRAMS: doc.N_PROGRAMS,
+                    POINTS: doc.POINTS,
                     D: doc.D,
                     updated: doc.updated,
                 })
                 .then(async res => {
-                    const points = this.chunkArray(doc.POINTS!);
                     const paths = this.chunkArray(doc.PATHS!);
-
-                    await this.afStore
-                        .collection('library')
-                        .doc(data.ID)
-                        .collection('points')
-                        .ref
-                        .get()
-                        .then(e => {
-                            e.docs.forEach(e => {
-                                this.afStore
-                                    .collection('library')
-                                    .doc(data.ID)
-                                    .collection('points')
-                                    .doc(e.id)
-                                    .delete();
-                            });
-                        });
-
-                    for (const point of points) {
-                        await this.afStore
-                            .collection('library')
-                            .doc(data.ID)
-                            .collection('points')
-                            .add({ data: point });
-                    }
+                    const remove: Array<string> = [];
 
                     await this.afStore
                         .collection('library')
@@ -537,23 +525,23 @@ export class DSSService {
                         .ref
                         .get()
                         .then(e => {
-                            e.docs.forEach(e => {
-                                this.afStore
-                                    .collection('library')
-                                    .doc(data.ID)
-                                    .collection('paths')
-                                    .doc(e.id)
-                                    .delete();
+                            e.docs.forEach(k => {
+                                remove.push('library/' + data.ID + '/paths/' + k.id);
                             });
                         });
 
                     for (const path of paths) {
+                        console.log(path);
                         await this.afStore
                             .collection('library')
                             .doc(data.ID)
                             .collection('paths')
                             .add({ data: path });
                     }
+
+                    remove.forEach(e => {
+                        this.afStore.doc(e).delete();
+                    });
                 });
         }
     }

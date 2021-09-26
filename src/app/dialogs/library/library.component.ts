@@ -91,7 +91,6 @@ export class LibraryDialog implements OnInit {
           if (e) {
             this.loadDocs();
           }
-
           if (ref) {
             ref.unsubscribe();
           }
@@ -105,6 +104,14 @@ export class LibraryDialog implements OnInit {
   }
 
   createDocument() {
-    this.dialog.open(ManagerDialog, { disableClose: true, data: {} });
+    const vin = this.dialog.open(ManagerDialog, { disableClose: true, data: {} });
+    const ref = vin.afterClosed().subscribe(e => {
+      if (e) {
+        this.loadDocs();
+      }
+      if (ref) {
+        ref.unsubscribe();
+      }
+    });
   }
 }

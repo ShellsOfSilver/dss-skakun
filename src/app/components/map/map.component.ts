@@ -22,12 +22,14 @@ export class MapComponent implements AfterViewInit {
   dssData!: Observable<DSSData>;
   markers: Array<L.Marker>;
   pLineGroup: Array<L.Polyline>;
+  extraText: string;
 
   constructor(
     private dssService: DSSService,
   ) {
     this.markers = [];
     this.pLineGroup = [];
+    this.extraText = '';
   }
 
   private clearPLineGroup() {
@@ -142,10 +144,8 @@ export class MapComponent implements AfterViewInit {
       });
     }
 
-    
     this.pLineGroup.forEach(polyline => {
       const points = (polyline.options as any)?.points as Array<number>;
-      
       if (points) {
         polyline.bindPopup(`№${points[0]} - №${points[1]}`)
           .on('popupclose', () => {
@@ -195,6 +195,13 @@ export class MapComponent implements AfterViewInit {
     ]).pipe(
       map(([data, page]) => {
         if (page === PAGE_NAME.Map && data.init) {
+          const paths = data.tables.SavingPath.data[0]['Path'];
+          if (data.viewMode === 'saving') {
+            this.extraText = paths;
+          } else {
+            this.extraText = '';
+          }
+
           this.map.setView(L.latLng(data.CENTER.x, data.CENTER.y), this.map.getZoom());
           this.clearPLineGroup();
           this.clearMarkers();
