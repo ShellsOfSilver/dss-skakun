@@ -64,18 +64,24 @@ export class MapComponent implements AfterViewInit {
     });
   }
 
-  private createMarker(point: Point, iconUrl: string) {
+  private createMarker(point: Point, iconUrl: string, xyPoints: Array<Point>) {
     const marker = L.marker(L.latLng(point.x, point.y), { icon: this.getIcon(point, iconUrl), data: point, } as any);
 
-    marker.bindTooltip(`№${point.key} [${point.x}, ${point.y}]`);
+    if (xyPoints.length) {
+      const el = xyPoints.find(e => e.key === point.key)!;
+      marker.bindTooltip(`№${point.key} [${el?.x}, ${el?.y}]`);
+    } else {
+      marker.bindTooltip(`№${point.key} [${point.x}, ${point.y}]`);
+    }
     marker.addTo(this.map);
 
     this.markers.push(marker);
   }
 
   private async addMarkers(dss: DSSData) {
-    dss.POINTS.forEach(point => this.createMarker(point, 'assets/pin.svg'));
-    this.createMarker(dss.CENTER, 'assets/pin_center.svg');
+    const xyPoints = this.dssService.isEuclide ? this.dssService.pointsToScreenXY([...dss.POINTS, dss.CENTER]) : [];
+    dss.POINTS.forEach(point => this.createMarker(point, 'assets/pin.svg', xyPoints));
+    this.createMarker(dss.CENTER, 'assets/pin_center.svg', xyPoints);
 
     const geometries: Array<string> = [];
     const paths = dss.tables.SavingPath.data[0]['Path'];
@@ -105,7 +111,7 @@ export class MapComponent implements AfterViewInit {
       Object.values(dss.PATHS).forEach((e: Path) => {
         if (!geometries.includes(e['geometry'])) {
           geometries.push(e['geometry']);
-          const pLine = L.polyline(polyline.decode(e['geometry']) as any, { points: e.points, color: '#0092d6', } as any);
+          const pLine = L.polyline(polyline.decode(e['geometry']) as any, { points: e.points, distance: e.distance, color: '#0092d6', } as any);
           this.pLineGroup.push(pLine);
         }
       });
@@ -138,7 +144,7 @@ export class MapComponent implements AfterViewInit {
       arr.forEach((path, inx) => {
         if (inx) {
           const el = PATHSValues.find(e => e.points.includes(+path) && e.points.includes(+arr[inx - 1]))!;
-          const pLine = L.polyline(polyline.decode(el.geometry) as any, { points: el.points, color: '#0092d6' } as any);
+          const pLine = L.polyline(polyline.decode(el.geometry) as any, { points: el.points, distance: el.distance, color: '#0092d6' } as any);
           this.pLineGroup.push(pLine);
         }
       });
@@ -146,8 +152,9 @@ export class MapComponent implements AfterViewInit {
 
     this.pLineGroup.forEach(polyline => {
       const points = (polyline.options as any)?.points as Array<number>;
+      const dis = (polyline.options as any)?.distance as number;
       if (points) {
-        polyline.bindPopup(`№${points[0]} - №${points[1]}`)
+        polyline.bindPopup(`№${points[0]} - №${points[1]} ${dis ? `(${dis} m)` : ''}`)
           .on('popupclose', () => {
             polyline.setStyle({
               color: '#0092d6',

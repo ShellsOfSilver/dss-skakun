@@ -298,8 +298,6 @@ export class ManagerDialog implements AfterViewInit, OnDestroy {
       setPoint(point);
     }
 
-    const localPath: Array<Path> = [];
-
     try {
       let i = 0;
 
@@ -326,19 +324,25 @@ export class ManagerDialog implements AfterViewInit, OnDestroy {
 
             this.paths.push(body1);
             this.paths.push(body2);
-            localPath.push(body1);
-          } else {
-            localPath.push(el);
           }
           i++;
           this.isLoading = Math.min((i / (points.length * points.length)) * 100, 100);
         }
       }
 
+      const localPaths = [] as Array<Path>;
+
+      for (const point of points) {
+        for (const point1 of points) {
+          const key1 = point.x + '_' + point.y + '*' + point1.x + '_' + point1.y;
+          localPaths.push(this.paths.find(e => e.ID === key1)!);
+        }
+      }
+
       await this.dssService.setDocument({
         ...this.documentData,
         POINTS: points,
-        PATHS: localPath,
+        PATHS: localPaths,
         NAME: value.NAME,
         N_PROGRAMS: value.N_PROGRAMS,
         D: value.D,

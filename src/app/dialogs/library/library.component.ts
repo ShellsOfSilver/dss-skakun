@@ -36,9 +36,7 @@ export class LibraryDialog implements OnInit {
     this.dssData = this.dssService.getDssData$();
     this.loadDocs();
 
-    // this.isLoading = false;
-    // this.documents = [TEST_DOC]
-
+    // // test mode
     // setTimeout(() => {
     //   this.dssService.setCurrentDocument('', true)
     //   .subscribe(res => {

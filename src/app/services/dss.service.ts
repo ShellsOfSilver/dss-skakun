@@ -136,7 +136,7 @@ export class DSSService {
         return F;
     }
 
-    private pointsToScreenXY(points: Array<Point>) {
+    pointsToScreenXY(points: Array<Point>) {
         points = JSON.parse(JSON.stringify(points));
 
         // https://stackoverflow.com/a/53827343
@@ -146,15 +146,15 @@ export class DSSService {
         const lngs = points.map((p) => p.y);
 
         const p0 = {
-            scrX: 0,
-            scrY: 0,
+            scrX: 1,
+            scrY: 1,
             lat: Math.max.apply(null, lats),
             lng: Math.max.apply(null, lngs),
         } as any;
 
         const p1 = {
-            scrX: 1000,
-            scrY: 1000,
+            scrX: 999,
+            scrY: 999,
             lat: Math.min.apply(null, lats),
             lng: Math.min.apply(null, lngs)
         } as any;
@@ -174,8 +174,8 @@ export class DSSService {
             pos.perY = ((pos.y - p0.pos.y) / (p1.pos.y - p0.pos.y));
 
             return {
-                x: p0.scrX + (p1.scrX - p0.scrX) * pos.perX,
-                y: p0.scrY + (p1.scrY - p0.scrY) * pos.perY
+                x: +(p1.scrX - (p1.scrX - p0.scrX) * pos.perX).toFixed(4),
+                y: +(p1.scrY - (p1.scrY - p0.scrY) * pos.perY).toFixed(4),
             }
         }
 
@@ -214,12 +214,16 @@ export class DSSService {
         const data: Array<any> = [];
         const columns: Array<string> = ['N', 'L1', 'L2', 'Distance'];
 
-        const keys = Object.keys(distance[0]).sort();
+        const keys = Object.keys(distance[0]).map(e => +e).filter(e => Number.isInteger(e)).sort((a, b) => a - b);
 
         for (let i = 0; i < distance.length; i++) {
             for (let j = 0; j < distance.length; j++) {
                 if (!(data.find(e => e.L1 === keys[i] && e.L2 === keys[j]) || data.find(e => e.L1 === keys[j] && e.L2 === keys[i]) || keys[j] === keys[i])) {
                     const dis = +(distance[i][keys[0]] + distance[j][keys[0]] - distance[i][keys[j]]).toFixed(4);
+
+                    if ((keys[j] === 8 && keys[i] === 5) || (keys[j] === 5 && keys[i] === 8)) {
+                        console.log(distance[i][keys[0]], distance[j][keys[0]], distance[i][keys[j]], i, keys[j])
+                    }
                     data.push({
                         L1: keys[j],
                         L2: keys[i],
@@ -411,9 +415,7 @@ export class DSSService {
     }
 
     loadLibrary() {
-        return this.afStore
-            .collection('library', ref => ref.orderBy('updated', 'desc'))
-            .get();
+        return this.afStore.collection('library', ref => ref.orderBy('updated', 'desc')).get();
     }
 
     setCurrentDocument(id: string, isTest = false, prepare = true) {
@@ -422,11 +424,16 @@ export class DSSService {
         } as Partial<DSSData>;
 
         if (isTest) {
-            return of(TEST_DOC).pipe(map(e => {
+            return of(TEST_DOC).pipe(map((doc: Partial<DSSData>) => {
+                this.originD = doc.D!;
+
+                doc.CENTER = doc.CENTER || doc.POINTS!.find(e => e.key === 0);
+                doc.POINTS = doc.POINTS!.filter(e => e.key !== 0);
+
                 if (prepare) {
-                    this.prepareData(TEST_DOC)
+                    this.prepareData(doc)
                 }
-                return TEST_DOC as Partial<DSSData>;
+                return doc as Partial<DSSData>;
             }));
         }
 
@@ -440,6 +447,7 @@ export class DSSService {
                         ...doc,
                         ...res.data() as Partial<DSSData>
                     };
+
                     this.originD = doc.D!;
 
                     doc.CENTER = doc.POINTS!.find(e => e.key === 0);
@@ -547,8 +555,6 @@ export class DSSService {
     }
 
     getPath(from: Point, to: Point) {
-        return this.http.get(
-            `http://router.project-osrm.org/route/v1/driving/${from.y},${from.x};${to.y},${to.x}?overview=full`
-        );
+        return this.http.get(`http://router.project-osrm.org/route/v1/driving/${from.y},${from.x};${to.y},${to.x}?overview=full`);
     }
 }
