@@ -2,12 +2,11 @@ import { AngularFirestore } from '@angular/fire/firestore';
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 
-import * as L from 'leaflet';
-
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Observable, of } from 'rxjs';
+import { map, switchMap } from 'rxjs/operators';
 
 import { DSSData, PAGE_NAME, Path, Point, VIEW_MODE } from '../models/dss';
-import { map, switchMap } from 'rxjs/operators';
+import { TEST_DOC } from '../data';
 
 @Injectable({
     providedIn: 'root',
@@ -367,16 +366,35 @@ export class DSSService {
         this.dssData.next(data);
     }
 
+    chunkArray<T>(arr: T[], size = 1500) {
+        const tempArray = [];
+
+        for (let index = 0; index < arr.length; index += size) {
+            tempArray.push(arr.slice(index, index + size));
+        }
+
+        return tempArray;
+    }
+
     loadLibrary() {
         return this.afStore
             .collection('library', ref => ref.orderBy('updated'))
             .get();
     }
 
-    setCurrentDocument(id: string) {
+    setCurrentDocument(id: string, isTest = false, prepare = true) {
         let doc = {
             ID: id,
         } as Partial<DSSData>;
+
+        if (isTest) {
+            return of(TEST_DOC).pipe(map(e => {
+                if (prepare) {
+                    this.prepareData(TEST_DOC)
+                }
+                return TEST_DOC as Partial<DSSData>;
+            }));
+        }
 
         return this.afStore
             .collection('library')
@@ -397,7 +415,13 @@ export class DSSService {
                         .get()
                 }),
                 switchMap(res => {
-                    const POINTS = res.docs.map(e => e.data() as Point);
+                    let POINTS: Array<Point> = [];
+
+                    res.docs.forEach(e => {
+                        const points = e.data().data as Array<Point>;
+                        POINTS = POINTS.concat(points);
+                    });
+
                     doc.CENTER = POINTS.find(e => e.key === 0);
                     doc.POINTS = POINTS.filter(e => e.key !== 0);
 
@@ -408,15 +432,135 @@ export class DSSService {
                         .get()
                 }),
                 map(res => {
-                    doc.PATHS = res.docs.map(e => ({ ...e.data() as Path, ID: e.id }));
-                    this.prepareData(doc);
+                    let PATHS: Array<Path> = [];
+
+                    res.docs.forEach(e => {
+                        const points = e.data().data as Array<Path>;
+                        PATHS = PATHS.concat(points);
+                    });
+
+                    doc.PATHS = PATHS;
+
+                    if (prepare) {
+                        this.prepareData(doc);
+                    }
+                    return doc;
                 }),
             );
     }
 
-    getPath(from: L.LatLng, to: L.LatLng) {
+    setDocument(data: Partial<DSSData>) {
+        const doc = {
+            NAME: data.NAME,
+            POINTS: data.POINTS,
+            PATHS: data.PATHS,
+            N_PROGRAMS: data.N_PROGRAMS,
+            D: data.D,
+            updated: new Date().getTime()
+        };
+
+        if (!data.ID) {
+            let id = '';
+            return this.afStore
+                .collection('library')
+                .add({
+                    NAME: doc.NAME,
+                    N_PROGRAMS: doc.N_PROGRAMS,
+                    D: doc.D,
+                    updated: doc.updated,
+                })
+                .then(async res => {
+                    id = res.id;
+
+                    const points = this.chunkArray(doc.POINTS!);
+                    const paths = this.chunkArray(doc.PATHS!);
+
+                    for (const point of points) {
+                        await this.afStore
+                            .collection('library')
+                            .doc(id)
+                            .collection('points')
+                            .add({ data: point });
+                    }
+
+                    for (const path of paths) {
+                        await this.afStore
+                            .collection('library')
+                            .doc(id)
+                            .collection('paths')
+                            .add({ data: path });
+                    }
+                });
+        } else {
+            return this.afStore
+                .collection('library')
+                .doc(data.ID)
+                .set({
+                    NAME: doc.NAME,
+                    N_PROGRAMS: doc.N_PROGRAMS,
+                    D: doc.D,
+                    updated: doc.updated,
+                })
+                .then(async res => {
+                    const points = this.chunkArray(doc.POINTS!);
+                    const paths = this.chunkArray(doc.PATHS!);
+
+                    await this.afStore
+                        .collection('library')
+                        .doc(data.ID)
+                        .collection('points')
+                        .ref
+                        .get()
+                        .then(e => {
+                            e.docs.forEach(e => {
+                                this.afStore
+                                    .collection('library')
+                                    .doc(data.ID)
+                                    .collection('points')
+                                    .doc(e.id)
+                                    .delete();
+                            });
+                        });
+
+                    for (const point of points) {
+                        await this.afStore
+                            .collection('library')
+                            .doc(data.ID)
+                            .collection('points')
+                            .add({ data: point });
+                    }
+
+                    await this.afStore
+                        .collection('library')
+                        .doc(data.ID)
+                        .collection('paths')
+                        .ref
+                        .get()
+                        .then(e => {
+                            e.docs.forEach(e => {
+                                this.afStore
+                                    .collection('library')
+                                    .doc(data.ID)
+                                    .collection('paths')
+                                    .doc(e.id)
+                                    .delete();
+                            });
+                        });
+
+                    for (const path of paths) {
+                        await this.afStore
+                            .collection('library')
+                            .doc(data.ID)
+                            .collection('paths')
+                            .add({ data: path });
+                    }
+                });
+        }
+    }
+
+    getPath(from: Point, to: Point) {
         return this.http.get(
-            `http://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=full`
+            `http://router.project-osrm.org/route/v1/driving/${from.y},${from.x};${to.y},${to.x}?overview=full`
         );
     }
 }

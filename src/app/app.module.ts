@@ -10,7 +10,8 @@ import { AngularFirestoreModule } from '@angular/fire/firestore';
 import { AngularFireModule } from '@angular/fire';
 
 import { HeaderComponent } from './components/header/header.component';
-import { LibraryDialog } from './dialogs/header/library.component';
+import { LibraryDialog } from './dialogs/library/library.component';
+import { ManagerDialog } from './dialogs/manager/manager.component';
 import { Lab1Component } from './components/lab_1/lab_1.component';
 import { Lab2Component } from './components/lab_2/lab_2.component';
 import { HomeComponent } from './components/home/home.component';
@@ -36,6 +37,7 @@ const firebaseConfig = {
     Lab1Component,
     Lab2Component,
     LibraryDialog,
+    ManagerDialog,
     HeaderComponent,
   ],
   imports: [

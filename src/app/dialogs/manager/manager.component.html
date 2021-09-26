@@ -1,0 +1,88 @@
+<div style="position: relative;">
+    <div class="data-collection" *ngIf="isLoading">
+        <div>
+            <p>Please wait. Collecting data... </p>
+            <mat-progress-bar mode="determinate" [value]="isLoading"></mat-progress-bar>
+        </div>
+    </div>
+    <h2 mat-dialog-title>
+        <span>Manager</span>
+        <button mat-icon-button (click)="close()">
+            <mat-icon>close</mat-icon>
+        </button>
+    </h2>
+    <mat-dialog-content class="mat-typography">
+        <div class="map" id="managerMap"></div>
+        <div class="content">
+            <form [formGroup]="form">
+                <p>General</p>
+                <div class="dash-border">
+                    <mat-form-field class="full-width" appearance="fill">
+                        <mat-label>Name</mat-label>
+                        <input type="text" matInput formControlName="NAME" [errorStateMatcher]="matcher"
+                            placeholder="Ex. Skakun v14">
+                        <mat-error *ngIf="form.get('NAME')?.hasError('required')">
+                            Name is <strong>required</strong>
+                        </mat-error>
+                    </mat-form-field>
+                    <mat-form-field class="full-width" appearance="fill">
+                        <mat-label>D</mat-label>
+                        <input type="number" matInput formControlName="D" [errorStateMatcher]="matcher"
+                            placeholder="Ex. 7.5">
+                        <mat-error *ngIf="form.get('D')?.hasError('required')">
+                            D is <strong>required</strong>
+                        </mat-error>
+                    </mat-form-field>
+                    <mat-form-field class="full-width" appearance="fill">
+                        <mat-label>Programs</mat-label>
+                        <input type="number" matInput formControlName="N_PROGRAMS" [errorStateMatcher]="matcher"
+                            placeholder="Ex. 5">
+                        <mat-error *ngIf="form.get('N_PROGRAMS')?.hasError('required')">
+                            Programs is <strong>required</strong>
+                        </mat-error>
+                    </mat-form-field>
+                </div>
+                <p>Center</p>
+                <div class="dash-border" formGroupName="CENTER">
+                    <mat-form-field class="full-width" appearance="fill">
+                        <mat-label>Lat, Lng</mat-label>
+                        <input type="text" matInput formControlName="xy" [errorStateMatcher]="matcher"
+                            placeholder="Ex. 42.1234, 37.1233">
+                        <button matSuffix mat-icon-button (click)="getLatLngFromMap(form.get('CENTER')?.get('xy'))">
+                            <mat-icon>room</mat-icon>
+                        </button>
+                        <mat-error *ngIf="form.get('CENTER')?.get('xy')?.hasError('required')">
+                            Lat, Lng is <strong>required</strong>
+                        </mat-error>
+                    </mat-form-field>
+                </div>
+                <p>Points</p>
+                <div class="dash-border" formArrayName="POINTS">
+                    <div *ngFor="let point of form.get('POINTS')?.controls; let i=index">
+                        <mat-form-field class="full-width" appearance="fill" [formGroupName]="i">
+                            <mat-label>Lat, Lng</mat-label>
+                            <mat-label class="key-num" matPrefix>{{point?.get('key')?.value}}</mat-label>
+                            <input type="text" matInput formControlName="xy" [errorStateMatcher]="matcher"
+                                placeholder="Ex. 42.1234, 37.1233">
+                            <button matSuffix mat-icon-button (click)="getLatLngFromMap(point?.get('xy'))">
+                                <mat-icon>room</mat-icon>
+                            </button>
+                            <button matSuffix mat-icon-button (click)="removePoint(point?.get('xy'), i)">
+                                <mat-icon>remove</mat-icon>
+                            </button>
+                            <mat-error *ngIf="point?.get('xy')?.hasError('required')">
+                                Lat, Lng is <strong>required</strong>
+                            </mat-error>
+                        </mat-form-field>
+                    </div>
+                    <div class="add-point-container" (click)="addPoint()">
+                        <mat-icon>add</mat-icon>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+        <button mat-button (click)="save()">Save</button>
+    </mat-dialog-actions>
+</div>

@@ -1,4 +1,5 @@
 export interface DSSData {
+    updated?: number,
     ID?: string;
     init: boolean;
     D: number;

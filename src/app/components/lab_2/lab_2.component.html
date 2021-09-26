@@ -1,5 +1,5 @@
 <div class="content" *ngIf="(dssData | async) as dss">
-    <div>
+    <div *ngIf="dss?.init">
         <h1>Saving Path</h1>
         <mat-divider></mat-divider>
 
@@ -13,7 +13,7 @@
             <tr mat-row *matRowDef="let row; columns: dss.tables.SavingPath.columns;"></tr>
         </table>
     </div>
-    <div>
+    <div *ngIf="dss?.init">
         <h1>Symmetric distance matrix</h1>
         <mat-divider></mat-divider>
 
@@ -27,7 +27,7 @@
             <tr mat-row *matRowDef="let row; columns: dss.tables.Distance.columns;"></tr>
         </table>
     </div>
-    <div>
+    <div *ngIf="dss?.init">
         <h1>Saving Distance</h1>
         <mat-divider></mat-divider>
 

@@ -4,7 +4,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSlideToggleChange } from '@angular/material/slide-toggle';
 import { Observable } from 'rxjs';
 
-import { LibraryDialog } from '../../dialogs/header/library.component';
+import { LibraryDialog } from '../../dialogs/library/library.component';
 import { DSSService } from '../../services/dss.service';
 import { DSSData } from '../../models/dss';
 

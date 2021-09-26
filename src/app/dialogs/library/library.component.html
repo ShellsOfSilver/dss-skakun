@@ -23,5 +23,5 @@
     </div>
 </mat-dialog-content>
 <mat-dialog-actions align="end" *ngIf="!isLoading">
-    <button mat-button mat-dialog-close>Close</button>
+    <button mat-button mat-dialog-close [disabled]="!(dssData | async)?.init">Close</button>
 </mat-dialog-actions>
