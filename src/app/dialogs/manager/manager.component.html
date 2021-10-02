@@ -15,7 +15,7 @@
         <div class="map" id="managerMap"></div>
         <div class="content">
             <form [formGroup]="form">
-                <p>General</p>
+                <p class="title">General</p>
                 <div class="dash-border">
                     <mat-form-field class="full-width" appearance="fill">
                         <mat-label>Name</mat-label>
@@ -42,7 +42,7 @@
                         </mat-error>
                     </mat-form-field>
                 </div>
-                <p>Center</p>
+                <p class="title">Center</p>
                 <div class="dash-border" formGroupName="CENTER">
                     <mat-form-field class="full-width" appearance="fill">
                         <mat-label>Lat, Lng</mat-label>
@@ -56,7 +56,7 @@
                         </mat-error>
                     </mat-form-field>
                 </div>
-                <p>Points</p>
+                <p class="title">Points</p>
                 <div class="dash-border" formArrayName="POINTS">
                     <div *ngFor="let point of form.get('POINTS')?.controls; let i=index">
                         <mat-form-field class="full-width" appearance="fill" [formGroupName]="i">

@@ -1,5 +1,6 @@
 export interface DSSData {
     updated?: number,
+    currentProgram?: string,
     ID?: string;
     init: boolean;
     D: number;
@@ -41,6 +42,10 @@ export interface DSSData {
             columns: Array<string>,
             data: Array<any>
         },
+        SavingPrograms: {
+            columns: Array<string>,
+            data: Array<any>
+        },
     },
 };
 
@@ -57,10 +62,11 @@ export interface Path {
     points: Array<number>;
 };
 
-export type VIEW_MODE = 'paths' | 'saving';
+export type VIEW_MODE = 'paths' | 'saving' | 'programs';
 
 export enum PAGE_NAME {
     'Map',
     'Part 1',
     'Part 2',
+    'Part 3',
 };

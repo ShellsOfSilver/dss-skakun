@@ -1,0 +1,25 @@
+<h2 mat-dialog-title>
+    <span>Map settings</span>
+</h2>
+<mat-dialog-content class="mat-typography" *ngIf="(dssData | async) as dss">
+    <p class="title">View mode</p>
+    <mat-button-toggle-group class="mode" [value]="dss.viewMode" (change)="change($event)" name="fontStyle"
+        aria-label="Font Style">
+        <mat-button-toggle *ngFor="let v of viewMode" [value]="v">{{v}}</mat-button-toggle>
+    </mat-button-toggle-group>
+    <p class="title" *ngIf="programLables?.length">Programs list</p>
+    <mat-button-toggle-group class="programs" *ngIf="programLables?.length" [value]="dss.currentProgram || programLables[0]"
+        (change)="changeProgram($event)" name="fontStyle" aria-label="Font Style">
+        <mat-button-toggle *ngFor="let p of programLables" [value]="p">{{p}}</mat-button-toggle>
+    </mat-button-toggle-group>
+    <p class="title" *ngIf="extraText?.length">Info</p>
+    <div class="extra-item-container">
+        <div class="extra-item" *ngFor="let item of extraText">
+            <div class="color-point" *ngIf="item.color" [style.background]="item.color"></div>
+            <div class="text-point">{{item.text}}</div>
+        </div>
+    </div>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+    <button mat-button mat-dialog-close>Close</button>
+</mat-dialog-actions>

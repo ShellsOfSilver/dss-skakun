@@ -9,10 +9,12 @@ import { NgModule } from '@angular/core';
 import { AngularFirestoreModule } from '@angular/fire/firestore';
 import { AngularFireModule } from '@angular/fire';
 
+import { MapSettingsDialog } from './dialogs/map-settings/map-settings.component';
 import { HeaderComponent } from './components/header/header.component';
 import { LibraryDialog } from './dialogs/library/library.component';
 import { ManagerDialog } from './dialogs/manager/manager.component';
 import { Lab1Component } from './components/lab_1/lab_1.component';
+import { Lab3Component } from './components/lab_3/lab_3.component';
 import { Lab2Component } from './components/lab_2/lab_2.component';
 import { HomeComponent } from './components/home/home.component';
 import { MapComponent } from './components/map/map.component';
@@ -27,7 +29,7 @@ const firebaseConfig = {
   messagingSenderId: "625327696644",
   appId: "1:625327696644:web:228ccf5056c4a172a33e51",
   measurementId: "G-1PBX6MH09F"
-}
+};
 
 @NgModule({
   declarations: [
@@ -36,9 +38,11 @@ const firebaseConfig = {
     MapComponent,
     Lab1Component,
     Lab2Component,
+    Lab3Component,
     LibraryDialog,
     ManagerDialog,
     HeaderComponent,
+    MapSettingsDialog,
   ],
   imports: [
     BrowserModule,

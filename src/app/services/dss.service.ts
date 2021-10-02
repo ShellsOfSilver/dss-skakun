@@ -40,6 +40,7 @@ export class DSSService {
             XSum: 0,
             Qmax: 0,
             Qij: [{}],
+            currentProgram: 'P1',
             viewMode: 'paths',
             tables: {
                 NQ_F: {
@@ -63,6 +64,10 @@ export class DSSService {
                     data: [{}]
                 },
                 SavingPath: {
+                    columns: [''],
+                    data: [{}]
+                },
+                SavingPrograms: {
                     columns: [''],
                     data: [{}]
                 },
@@ -109,7 +114,7 @@ export class DSSService {
 
             for (let j = 0; j < X.length; j++) {
                 const value = Math.max(X[j] * Xnorm[i], 0);
-                row['F' + (j + 1)] = +value.toFixed(4);
+                row['P' + (j + 1)] = +value.toFixed(4);
 
                 if (value > Qmax) {
                     Qmax = +value.toFixed(4);
@@ -220,10 +225,6 @@ export class DSSService {
             for (let j = 0; j < distance.length; j++) {
                 if (!(data.find(e => e.L1 === keys[i] && e.L2 === keys[j]) || data.find(e => e.L1 === keys[j] && e.L2 === keys[i]) || keys[j] === keys[i])) {
                     const dis = +(distance[i][keys[0]] + distance[j][keys[0]] - distance[i][keys[j]]).toFixed(4);
-
-                    if ((keys[j] === 8 && keys[i] === 5) || (keys[j] === 5 && keys[i] === 8)) {
-                        console.log(distance[i][keys[0]], distance[j][keys[0]], distance[i][keys[j]], i, keys[j])
-                    }
                     data.push({
                         L1: keys[j],
                         L2: keys[i],
@@ -278,13 +279,73 @@ export class DSSService {
 
         addVal([...distance]);
 
-        savingPath.push('0');
-
         return {
             columns,
             data: [{
                 Path: savingPath.join('-')
             }]
+        };
+    }
+
+    calcPrograms(dss: DSSData) {
+        const data: Array<any> = [];
+        const columns: Array<string> = ['N', 'Path', 'D'];
+
+        const D = dss.D;
+        const N_PROGRAMS = dss.N_PROGRAMS;
+        const SAVING = dss.tables.SavingPath.data[0]['Path'] as string;
+        const Qij: Array<any> = [];
+
+        SAVING.split('-')
+            .forEach(point => {
+                if (+point) {
+                    const el = dss.Qij.find(e => 1 + e.i === +point);
+                    Qij.push(el);
+                }
+            });
+
+        for (let i = 0; i < N_PROGRAMS; i++) {
+            const key = 'P' + (i + 1);
+
+            data.push({ N: key, Path: '', D: '', key });
+
+            const paths: Array<{ Path: string, D: number }> = [];
+            let tmpD = D;
+            let tmpPath = '0';
+
+            for (let j = 0; j < Qij.length; j++) {
+                const q = Qij[j];
+                const nextQ = (Qij[j + 1] || {});
+
+                if (nextQ[key] && tmpD - (nextQ[key] + q[key]) > 0) {
+                    tmpPath += '-' + (q.i + 1);
+                    tmpD -= q[key];
+                } else if (!nextQ[key]) {
+                    tmpPath += '-' + (q.i + 1);
+                    tmpD -= q[key];
+                    tmpPath += '-0';
+                    paths.push({ Path: tmpPath, D: +(D - tmpD) .toFixed(4)});
+                } else {
+                    tmpPath += '-0';
+                    paths.push({ Path: tmpPath, D: +(D - tmpD) .toFixed(4) });
+                    tmpD = D;
+                    tmpPath = '0-' + (q.i + 1);
+                }
+            }
+
+            paths.forEach((p, inx) => {
+                data.push({
+                    N: inx + 1,
+                    Path: p.Path,
+                    D: p.D,
+                    key,
+                });
+            });
+        }
+
+        return {
+            columns,
+            data
         };
     }
 
@@ -299,6 +360,13 @@ export class DSSService {
         this.dssData.next({
             ...this.dssData.value,
             viewMode
+        });
+    }
+
+    setProgram(program: string) {
+        this.dssData.next({
+            ...this.dssData.value,
+            currentProgram: program
         });
     }
 
@@ -365,6 +433,8 @@ export class DSSService {
                 SavingPath: savingPath,
             }
         } as DSSData;
+
+        data.tables.SavingPrograms = this.calcPrograms(data);
 
         console.log('data::', data);
         this.dssData.next(data);

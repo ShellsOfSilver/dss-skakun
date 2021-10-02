@@ -11,3 +11,11 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif;  overflow: 
         color: dimgray;
     }
 }
+
+.title {
+    margin: 12px 0 !important;
+    border-bottom: 1px solid #b7b7b7;
+    width: fit-content;
+    font-weight: 600;
+    font-size: 14px;
+}
