@@ -9,24 +9,10 @@ export interface DSSData {
     NAME: string;
     CENTER: Point;
     N_PROGRAMS: number;
-    NQ: Array<number>;
-    F: Array<number>;
-    X: Array<number>;
-    Xnorm: Array<number>;
-    XSum: number;
-    Qmax: number;
     Qij: Array<{ [key: string]: number }>;
     viewMode: VIEW_MODE;
     tables: {
-        NQ_F: {
-            columns: Array<string>,
-            data: Array<any>
-        },
         Q: {
-            columns: Array<string>,
-            data: Array<any>
-        },
-        Other: {
             columns: Array<string>,
             data: Array<any>
         },
@@ -53,6 +39,7 @@ export interface Point {
     x: number;
     y: number;
     key: number;
+    programs?: Array<number>
 };
 
 export interface Path {

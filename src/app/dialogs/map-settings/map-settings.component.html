@@ -12,13 +12,7 @@
         (change)="changeProgram($event)" name="fontStyle" aria-label="Font Style">
         <mat-button-toggle *ngFor="let p of programLables" [value]="p">{{p}}</mat-button-toggle>
     </mat-button-toggle-group>
-    <p class="title" *ngIf="extraText?.length">Info</p>
-    <div class="extra-item-container">
-        <div class="extra-item" *ngFor="let item of extraText">
-            <div class="color-point" *ngIf="item.color" [style.background]="item.color"></div>
-            <div class="text-point">{{item.text}}</div>
-        </div>
-    </div>
+    <app-extra-info [extraText]="extraText"></app-extra-info>
 </mat-dialog-content>
 <mat-dialog-actions align="end">
     <button mat-button mat-dialog-close>Close</button>

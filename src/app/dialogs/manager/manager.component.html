@@ -57,9 +57,11 @@
                     </mat-form-field>
                 </div>
                 <p class="title">Points</p>
-                <div class="dash-border" formArrayName="POINTS">
-                    <div *ngFor="let point of form.get('POINTS')?.controls; let i=index">
-                        <mat-form-field class="full-width" appearance="fill" [formGroupName]="i">
+                <div [class.disabled]="form.get('N_PROGRAMS')?.hasError('required') || form.get('N_PROGRAMS')?.value <= 0"
+                    class="dash-border" formArrayName="POINTS">
+                    <div *ngFor="let point of form.get('POINTS')?.controls; let i=index" class="point-container"
+                        [formGroupName]="i">
+                        <mat-form-field class="full-width" appearance="fill">
                             <mat-label>Lat, Lng</mat-label>
                             <mat-label class="key-num" matPrefix>{{point?.get('key')?.value}}</mat-label>
                             <input type="text" matInput formControlName="xy" [errorStateMatcher]="matcher"
@@ -74,6 +76,19 @@
                                 Lat, Lng is <strong>required</strong>
                             </mat-error>
                         </mat-form-field>
+                        <div formArrayName="programs" class="programs-container">
+                            <div class="program-item"
+                                *ngFor="let prog of point?.get('programs')?.controls; let j=index">
+                                <mat-form-field class="min-width" appearance="fill" [formGroupName]="j">
+                                    <input type="text" matInput formControlName="pr" [errorStateMatcher]="matcher"
+                                        placeholder="Ex. 2.34">
+                                    <mat-label class="key-num" matPrefix>P{{j + 1}}</mat-label>
+                                    <mat-error *ngIf="prog?.get('pr')?.hasError('required')">
+                                        Program is <strong>required</strong>
+                                    </mat-error>
+                                </mat-form-field>
+                            </div>
+                        </div>
                     </div>
                     <div class="add-point-container" (click)="addPoint()">
                         <mat-icon>add</mat-icon>

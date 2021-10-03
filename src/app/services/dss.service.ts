@@ -33,25 +33,11 @@ export class DSSService {
             PATHS: [],
             N_PROGRAMS: 0,
             NAME: '...',
-            NQ: [0],
-            F: [0],
-            X: [0],
-            Xnorm: [0],
-            XSum: 0,
-            Qmax: 0,
             Qij: [{}],
             currentProgram: 'P1',
             viewMode: 'paths',
             tables: {
-                NQ_F: {
-                    columns: [''],
-                    data: [{}]
-                },
                 Q: {
-                    columns: [''],
-                    data: [{}]
-                },
-                Other: {
                     columns: [''],
                     data: [{}]
                 },
@@ -75,70 +61,16 @@ export class DSSService {
         });
     }
 
-    private getX(points: Array<Point>) {
-        let XSum = 0;
-
-        const X: Array<number> = [];
-        const Xnorm: Array<number> = [];
-
-        for (let i = 0; i < points.length; i++) {
-            const value = Math.random();
-
-            X.push(value);
-            XSum += value;
-        }
-
-        for (let i = 0; i < points.length; i++) {
-            Xnorm.push(X[i] / XSum);
-        }
-
-        return { XSum: +XSum.toFixed(4), X, Xnorm };
-    }
-
-    private getNQ(nPrograms: number) {
-        const nq: Array<number> = [];
-
-        for (let i = 0; i < nPrograms; i++) {
-            nq.push(+Math.random().toFixed(4));
-        }
-
-        return nq;
-    }
-
-    private getQij(X: Array<number>, Xnorm: Array<number>) {
+    private getQij(Points: Array<Point>) {
         const Qij: Array<{ [key: string]: number }> = [];
-        let Qmax = 0;
-
-        for (let i = 0; i < Xnorm.length; i++) {
+        for (let i = 0; i < Points.length; i++) {
             const row: { [key: string]: number } = { i };
-
-            for (let j = 0; j < X.length; j++) {
-                const value = Math.max(X[j] * Xnorm[i], 0);
-                row['P' + (j + 1)] = +value.toFixed(4);
-
-                if (value > Qmax) {
-                    Qmax = +value.toFixed(4);
-                }
+            for (let j = 0; j < (Points[i].programs?.length || 0); j++) {
+                row['P' + (j + 1)] = Points[i].programs![j];
             }
-
             Qij.push(row);
         }
-
-        return { Qij, Qmax };
-    }
-
-    private getFs(nq: Array<number>) {
-        const F: Array<number> = [];
-
-        for (let i = 0; i < nq.length; i++) {
-            if (i === 0) {
-                F.push(+(3 * nq[i] * (1 + this.Dm)).toFixed(4));
-            } else {
-                F.push(+(F[i - 1] * (1 + nq[i])).toFixed(4));
-            }
-        }
-
-        return F;
+        return Qij;
     }
 
     pointsToScreenXY(points: Array<Point>) {
@@ -291,6 +223,10 @@ export class DSSService {
         const data: Array<any> = [];
         const columns: Array<string> = ['N', 'Path', 'D'];
 
+        if (!this.isEuclide) {
+            columns.push('Distance');
+        }
+
         const D = dss.D;
         const N_PROGRAMS = dss.N_PROGRAMS;
         const SAVING = dss.tables.SavingPath.data[0]['Path'] as string;
@@ -307,7 +243,7 @@ export class DSSService {
         for (let i = 0; i < N_PROGRAMS; i++) {
             const key = 'P' + (i + 1);
 
-            data.push({ N: key, Path: '', D: '', key });
+            data.push({ N: key, Path: '', D: '', key, Distance: '' });
 
             const paths: Array<{ Path: string, D: number }> = [];
             let tmpD = D;
@@ -324,29 +260,38 @@ export class DSSService {
                     tmpPath += '-' + (q.i + 1);
                     tmpD -= q[key];
                     tmpPath += '-0';
-                    paths.push({ Path: tmpPath, D: +(D - tmpD) .toFixed(4)});
+                    paths.push({ Path: tmpPath, D: +(D - tmpD).toFixed(4) });
                 } else {
                     tmpPath += '-0';
-                    paths.push({ Path: tmpPath, D: +(D - tmpD) .toFixed(4) });
+                    paths.push({ Path: tmpPath, D: +(D - tmpD).toFixed(4) });
                     tmpD = D;
                     tmpPath = '0-' + (q.i + 1);
                 }
             }
 
             paths.forEach((p, inx) => {
+                let dis = 0;
+                const PATHSValues = Object.values(dss.PATHS);
+                const points = p.Path.split('-');
+
+                points.forEach((key, inx) => {
+                    if (inx) {
+                        const el = PATHSValues.find(e => e.points.includes(+key) && e.points.includes(+points[inx - 1]))!;
+                        dis += +el.distance;
+                    }
+                })
+
                 data.push({
                     N: inx + 1,
                     Path: p.Path,
                     D: p.D,
                     key,
+                    Distance: (+`${dis / 1000}`).toFixed(4) + ' km'
                 });
             });
         }
 
-        return {
-            columns,
-            data
-        };
+        return { columns, data };
     }
 
     setEuclide(status: boolean) {
@@ -381,52 +326,24 @@ export class DSSService {
     prepareData(doc: Partial<DSSData>) {
         this.Dm = doc.D!;
 
-        const NQ = this.getNQ(doc.N_PROGRAMS!);
-        const F = this.getFs(NQ);
-        const { XSum, X, Xnorm } = this.getX(doc.POINTS!);
-        const { Qij, Qmax } = this.getQij(F, Xnorm);
+        const Qij = this.getQij(doc.POINTS!);
         const distance = this.getDistance2Point([doc.CENTER!, ...doc.POINTS!], doc.PATHS!);
         const savingTable = this.calcSavingTable(distance.data);
         const savingPath = this.calcSavingPath(savingTable.data);
-
-        if (Qmax > this.Dm) {
-            console.log('-- Updated D --');
-            this.Dm = Qmax + Math.random() * ((Qmax * 0.1) - 0 + 1) + 0;
-        }
 
         const data = {
             ...doc,
             init: true,
             D: this.Dm,
-            NQ,
-            F,
-            X,
-            XSum,
-            Xnorm,
             Qij,
-            Qmax,
             viewMode: this.dssData.value.viewMode,
             tables: {
-                NQ_F: {
-                    columns: ['N', 'η', 'F'],
-                    data: NQ.map((e, i) => ({
-                        N: i + 1,
-                        η: e,
-                        F: F[i]
-                    })),
-                },
                 Q: {
-                    columns: ['N', 'X', 'X_norm', ...F.map((_, i) => 'F' + (i + 1))],
-                    data: X.map((e, i) => ({
+                    columns: ['N', ...Object.keys(Qij[0]).filter(e => e.startsWith('P'))],
+                    data: Qij.map((e, i) => ({
                         N: i + 1,
-                        X: e.toFixed(4),
-                        X_norm: Xnorm[i].toFixed(4),
                         ...Qij[i]
                     })),
-                },
-                Other: {
-                    columns: ['D', 'X_sum', 'Q_max'],
-                    data: [{ D: doc.D!, X_sum: XSum, Q_max: Qmax }],
                 },
                 Distance: distance,
                 SavingTable: savingTable,
@@ -513,11 +430,7 @@ export class DSSService {
             .get()
             .pipe(
                 switchMap(res => {
-                    doc = {
-                        ...doc,
-                        ...res.data() as Partial<DSSData>
-                    };
-
+                    doc = { ...doc, ...res.data() as Partial<DSSData> };
                     this.originD = doc.D!;
 
                     doc.CENTER = doc.POINTS!.find(e => e.key === 0);

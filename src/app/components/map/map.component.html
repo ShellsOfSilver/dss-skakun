@@ -2,4 +2,10 @@
     <button class="settings" mat-icon-button (click)="openSettings()">
         <mat-icon>settings</mat-icon>
     </button>
+    <button class="info" mat-icon-button (click)="showInfo = !showInfo">
+        <mat-icon>info_outline</mat-icon>
+        <div *ngIf="showInfo" class="extra-info-container">
+            <app-extra-info [extraText]="extraText"></app-extra-info>
+        </div>
+    </button>
 </div>

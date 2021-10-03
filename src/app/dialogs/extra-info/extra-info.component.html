@@ -1,0 +1,7 @@
+<p class="title">Info</p>
+<div class="extra-item-container">
+    <div class="extra-item" *ngFor="let item of extraText">
+        <div class="color-point" *ngIf="item.color" [style.background]="item.color"></div>
+        <div class="text-point">{{item.text}}</div>
+    </div>
+</div>

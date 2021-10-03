@@ -1,5 +1,5 @@
-<mat-toolbar color="primary">
-    <span>{{(dssData | async)?.NAME}}</span>
+<mat-toolbar color="primary" *ngIf="dssData | async as dss">
+    <span>{{dss?.NAME}}, D: {{dss?.D}}</span>
     <div class="side-action">
         <mat-slide-toggle (change)="change($event)">Euclide</mat-slide-toggle>
         <button mat-raised-button (click)="openLibrary()">Library</button>

@@ -35,6 +35,7 @@ export class ManagerDialog implements AfterViewInit, OnDestroy {
   isMapClick: FormControl | null;
   paths: Array<Path>;
   snack: any;
+  subProgramsLen: number;
 
   constructor(
     @Inject(MAT_DIALOG_DATA) public documentData: Partial<DSSData>,
@@ -48,6 +49,8 @@ export class ManagerDialog implements AfterViewInit, OnDestroy {
     this.paths = [];
     const points = [];
     this.isLoading = 0;
+    const dValue = { N_PROGRAMS: 3,  D: 5 };
+    this.subProgramsLen = 0;
 
     if (documentData.PATHS?.length) {
       this.paths = documentData.PATHS;
@@ -55,22 +58,26 @@ export class ManagerDialog implements AfterViewInit, OnDestroy {
 
     if (documentData.POINTS?.length) {
       documentData.POINTS.forEach((e, i) => {
+        const programs: Array<{pr: string}> = [];
+        (e.programs || []).forEach(l => programs.push({pr: `${l}`}));
         points.push(this.fb.group({
           'xy': this.fb.control(`${e?.x}, ${e?.y}`, [Validators.required]),
           'key': this.fb.control(i + 1, [Validators.required]),
+          'programs': this.generatePrograms((documentData?.N_PROGRAMS || dValue.N_PROGRAMS), programs),
         }));
       });
     } else {
       points.push(this.fb.group({
         'xy': this.fb.control('', [Validators.required]),
         'key': this.fb.control(1, [Validators.required]),
+        'programs': this.generatePrograms((documentData?.N_PROGRAMS || dValue.N_PROGRAMS)),
       }));
     }
 
     this.form = this.fb.group({
       'NAME': this.fb.control(documentData.NAME || '', [Validators.required]),
-      'D': this.fb.control(documentData.D || 5, [Validators.required]),
-      'N_PROGRAMS': this.fb.control(documentData.N_PROGRAMS || 5, [Validators.required]),
+      'D': this.fb.control(documentData.D || dValue.D, [Validators.required]),
+      'N_PROGRAMS': this.fb.control(documentData.N_PROGRAMS || dValue.N_PROGRAMS, [Validators.required]),
       'CENTER': this.fb.group({
         'xy': this.fb.control(documentData.CENTER?.x ? `${documentData.CENTER?.x}, ${documentData.CENTER?.y}` : '', [Validators.required]),
         'key': this.fb.control(documentData.CENTER?.key || 0, [Validators.required]),
@@ -94,6 +101,22 @@ export class ManagerDialog implements AfterViewInit, OnDestroy {
           }
         } catch (er) { }
 
+        if (!Number.isInteger(value.N_PROGRAMS)) {
+          this._snackBar.open('Program must be an integer', 'Ok', { duration: 2000 });
+          this.form.get('N_PROGRAMS')?.patchValue(0);
+        } else if (value.N_PROGRAMS) {
+          if (+this.subProgramsLen !== +value.N_PROGRAMS) {
+            this.subProgramsLen = value.N_PROGRAMS;
+
+            (this.form.get('POINTS')! as FormArray).controls
+            .forEach((control) => {
+              const value = (control as FormGroup).get('programs')?.value;
+              (control as FormGroup).removeControl('programs');
+              (control as FormGroup).addControl('programs', this.generatePrograms(this.form.get('N_PROGRAMS')?.value, value));
+            });
+          }
+        }
+
         if (value?.POINTS?.length) {
           value.POINTS.forEach((el: any) => {
             try {
@@ -109,6 +132,16 @@ export class ManagerDialog implements AfterViewInit, OnDestroy {
 
     this.isMapClick = null;
   }
+
+  private generatePrograms(len: number, oldValue?: Array<{pr: string}>) {
+    const controls = [];
+    for (let i = 0; i < len; i++) {
+      const el = (oldValue || [])[i]?.pr;
+      controls.push(this.fb.group({ 'pr': this.fb.control(el, [Validators.required]) }));
+    }
+    this.subProgramsLen = len;
+    return this.fb.array(controls);
+  };
 
   private createMarker(point: string, key: number, iconUrl: string) {
     const x = +point.split(',')[0];
@@ -201,6 +234,7 @@ export class ManagerDialog implements AfterViewInit, OnDestroy {
     const control = this.fb.group({
       'xy': this.fb.control('', [Validators.required]),
       'key': this.fb.control(len + 1, [Validators.required]),
+      'programs': this.generatePrograms(this.form.get('N_PROGRAMS')?.value),
     });
 
     (this.form.get('POINTS')! as FormArray).push(control);
@@ -270,6 +304,12 @@ export class ManagerDialog implements AfterViewInit, OnDestroy {
       if (ivalidCoords(point.xy, point.key)) {
         return true;
       }
+      for (const pr of point.programs) {
+        if (pr.pr <= 0 || Number.isNaN(+pr.pr)) {
+          this._snackBar.open(`Point №${point.key} must have programs greater than zero or to be number`, 'Ok', { duration: 2000 });
+          return true;
+        }
+      }
     }
     return false;
   }
@@ -287,9 +327,13 @@ export class ManagerDialog implements AfterViewInit, OnDestroy {
     const setPoint = (point: any) => {
       const x = +point.xy.split(',')[0];
       const y = +point.xy.split(',')[1];
+      const programs: Array<number> = [];
+      (point.programs || []).forEach((el: any) => {
+        programs.push(+el.pr)
+      });
 
       points.push({
-        x, y, key: point.key
+        x, y, key: point.key, programs
       });
     };
 

@@ -31,11 +31,13 @@ export class MapComponent implements AfterViewInit {
   colors: Array<string>;
   programLables: Array<string>;
   currentProgram: string;
+  showInfo: boolean;
 
   constructor(
     private dssService: DSSService,
     private dialog: MatDialog,
   ) {
+    this.showInfo = false;
     this.markers = [];
     this.pLineGroup = [];
     this.programLables = [];
@@ -124,6 +126,41 @@ export class MapComponent implements AfterViewInit {
     });
   }
 
+  private setPolyline() {
+    this.pLineGroup.forEach(polyline => {
+      const points = (polyline.options as any)?.points as Array<number>;
+      const dis = (polyline.options as any)?.distance as number;
+      const color = (polyline.options as any)?.oldColor || '#0092d6';
+
+      if (points) {
+        polyline.bindPopup(`№${points[0]} - №${points[1]} ${dis ? `(${(dis / 1000).toFixed(3)} km)` : ''}`)
+          .on('popupclose', () => {
+            polyline.setStyle({ color, weight: 4, });
+
+            this.markers.forEach(marker => {
+              const point = (marker.options as any)?.data;
+              if (points.includes(point?.key)) {
+                marker.setIcon(this.getIcon(point, '', marker.getIcon().options.iconUrl!));
+              }
+            });
+          })
+          .on('popupopen', () => {
+            polyline.bringToFront();
+            polyline.setStyle({ color: 'red', weight: 8, });
+
+            this.markers.forEach(marker => {
+              const point = (marker.options as any)?.data;
+              if (points.includes(point?.key)) {
+                marker.setIcon(this.getIcon(point, 'assets/pin_green.svg', marker.getIcon().options.iconUrl!));
+              }
+            });
+          })
+      }
+
+      polyline.addTo(this.map);
+    });
+  }
+
   private async addMarkers(dss: DSSData) {
     const xyPoints = this.dssService.isEuclide ? this.dssService.pointsToScreenXY([...dss.POINTS, dss.CENTER]) : [];
     dss.POINTS.forEach(point => this.createMarker(point, 'assets/pin.svg', xyPoints));
@@ -182,7 +219,7 @@ export class MapComponent implements AfterViewInit {
         .filter(e => e.key === this.currentProgram && e.Path)
         .forEach(e => {
           const color = getColor();
-          extraTextPaths.push({ color,  text: `#${extraTextInx++}: ${e.Path}` });
+          extraTextPaths.push({ color, text: `#${extraTextInx++}: ${e.Path}` });
           this.setViewModeSavingAndIsEuclide(e.Path, color);
         });
     } else if (!this.dssService.isEuclide && dss.viewMode === 'programs') {
@@ -190,50 +227,19 @@ export class MapComponent implements AfterViewInit {
         .filter(e => e.key === this.currentProgram && e.Path)
         .forEach(e => {
           const color = getColor();
-          extraTextPaths.push({ color,  text: `#${extraTextInx++}: ${e.Path}` });
+          extraTextPaths.push({ color, text: `#${extraTextInx++}: ${e.Path}` });
           this.setViewModeSavingAndIsNotEuclide(dss, e.Path, color)
         });
     }
 
     if (dss.viewMode === 'programs') {
       this.extraText = [
-        {text:  'Program: ' + this.currentProgram},
+        { text: 'Program: ' + this.currentProgram },
         ...extraTextPaths
       ];
     }
 
-    this.pLineGroup.forEach(polyline => {
-      const points = (polyline.options as any)?.points as Array<number>;
-      const dis = (polyline.options as any)?.distance as number;
-      const color = (polyline.options as any)?.oldColor || '#0092d6';
-
-      if (points) {
-        polyline.bindPopup(`№${points[0]} - №${points[1]} ${dis ? `(${dis} m)` : ''}`)
-          .on('popupclose', () => {
-            polyline.setStyle({ color, weight: 4, });
-
-            this.markers.forEach(marker => {
-              const point = (marker.options as any)?.data;
-              if (points.includes(point?.key)) {
-                marker.setIcon(this.getIcon(point, '', marker.getIcon().options.iconUrl!));
-              }
-            });
-          })
-          .on('popupopen', () => {
-            polyline.bringToFront();
-            polyline.setStyle({ color: 'red', weight: 8, });
-
-            this.markers.forEach(marker => {
-              const point = (marker.options as any)?.data;
-              if (points.includes(point?.key)) {
-                marker.setIcon(this.getIcon(point, 'assets/pin_green.svg', marker.getIcon().options.iconUrl!));
-              }
-            });
-          })
-      }
-
-      polyline.addTo(this.map);
-    });
+    this.setPolyline();
   }
 
   ngAfterViewInit(): void {
@@ -255,7 +261,7 @@ export class MapComponent implements AfterViewInit {
           const tmpPrograms = [];
 
           if (data.viewMode === 'saving') {
-            this.extraText = [{text: paths}];
+            this.extraText = [{ text: paths }];
           } else if (data.viewMode === 'programs') {
             for (let i = 0; i < data.N_PROGRAMS; i++) {
               tmpPrograms.push('P' + (i + 1));

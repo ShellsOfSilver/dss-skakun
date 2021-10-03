@@ -10,6 +10,7 @@ import { AngularFirestoreModule } from '@angular/fire/firestore';
 import { AngularFireModule } from '@angular/fire';
 
 import { MapSettingsDialog } from './dialogs/map-settings/map-settings.component';
+import { ExtraInfoComponent } from './dialogs/extra-info/extra-info.component';
 import { HeaderComponent } from './components/header/header.component';
 import { LibraryDialog } from './dialogs/library/library.component';
 import { ManagerDialog } from './dialogs/manager/manager.component';
@@ -43,6 +44,7 @@ const firebaseConfig = {
     ManagerDialog,
     HeaderComponent,
     MapSettingsDialog,
+    ExtraInfoComponent,
   ],
   imports: [
     BrowserModule,
