@@ -253,7 +253,7 @@ export class DSSService {
                 const q = Qij[j];
                 const nextQ = (Qij[j + 1] || {});
 
-                if (nextQ[key] && tmpD - (nextQ[key] + q[key]) > 0) {
+                if (nextQ[key] && tmpD - (nextQ[key] + q[key]) >= 0) {
                     tmpPath += '-' + (q.i + 1);
                     tmpD -= q[key];
                 } else if (!nextQ[key]) {
