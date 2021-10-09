@@ -5,11 +5,13 @@
     <p class="title">View mode</p>
     <mat-button-toggle-group class="mode" [value]="dss.viewMode" (change)="change($event)" name="fontStyle"
         aria-label="Font Style">
-        <mat-button-toggle *ngFor="let v of viewMode" [value]="v">{{v}}</mat-button-toggle>
+        <mat-button-toggle *ngFor="let v of viewMode" [value]="v"><span
+                style="text-transform: capitalize;">{{v}}</span></mat-button-toggle>
     </mat-button-toggle-group>
     <p class="title" *ngIf="programLables?.length">Programs list</p>
-    <mat-button-toggle-group class="programs" *ngIf="programLables?.length" [value]="dss.currentProgram || programLables[0]"
-        (change)="changeProgram($event)" name="fontStyle" aria-label="Font Style">
+    <mat-button-toggle-group class="programs" *ngIf="programLables?.length"
+        [value]="dss.currentProgram || programLables[0]" (change)="changeProgram($event)" name="fontStyle"
+        aria-label="Font Style">
         <mat-button-toggle *ngFor="let p of programLables" [value]="p">{{p}}</mat-button-toggle>
     </mat-button-toggle-group>
     <app-extra-info [extraText]="extraText"></app-extra-info>

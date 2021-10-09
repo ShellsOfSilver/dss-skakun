@@ -57,6 +57,14 @@ export class DSSService {
                     columns: [''],
                     data: [{}]
                 },
+                Sweeping: {
+                    columns: [''],
+                    data: [{}]
+                },
+                SweepingPath: {
+                    columns: [''],
+                    data: [{}]
+                },
             }
         });
     }
@@ -174,7 +182,25 @@ export class DSSService {
         };
     }
 
-    private calcSavingPath(distance: Array<any>) {
+    calcSweepingPath(sweeping: Array<any>) {
+        const sweepingPath: Array<any> = ['0'];
+        const columns: Array<string> = ['Path'];
+
+        sweeping.forEach(e => {
+            sweepingPath.push(`${e['N']}`);
+        });
+
+        sweepingPath.push('0');
+
+        return {
+            columns,
+            data: [{
+                Path: sweepingPath.join('-')
+            }]
+        };
+    }
+
+    calcSavingPath(distance: Array<any>) {
         const savingPath: Array<any> = ['0'];
         const columns: Array<string> = ['Path'];
         let current = distance[0];
@@ -253,7 +279,7 @@ export class DSSService {
                 const q = Qij[j];
                 const nextQ = (Qij[j + 1] || {});
 
-                if (nextQ[key] && tmpD - (nextQ[key] + q[key]) >= 0) {
+                if (nextQ[key] && tmpD - q[key] >= 0) {
                     tmpPath += '-' + (q.i + 1);
                     tmpD -= q[key];
                 } else if (!nextQ[key]) {
@@ -294,6 +320,64 @@ export class DSSService {
         return { columns, data };
     }
 
+    calcQ(Qij: Array<{ [key: string]: number }>, points: Array<Point>) {
+        if (this.isEuclide) {
+            points = this.pointsToScreenXY(points);
+        }
+
+        return {
+            columns: ['N', 'X', 'Y', ...Object.keys(Qij[0]).filter(e => e.startsWith('P'))],
+            data: Qij.map((e, i) => ({
+                N: i + 1,
+                X: points[i].x,
+                Y: points[i].y,
+                ...Qij[i]
+            })),
+        }
+    }
+
+    calcSweeping(points: Array<Point>, center: Point) {
+        const newCoords: Array<Point> = [];
+        const data: Array<any> = [];
+        let coords = [center, ...points];
+
+        if (this.isEuclide) {
+            coords = this.pointsToScreenXY(coords);
+        }
+
+        for (let i = 1; i < coords.length; i++) {
+            const x = coords[i].x - coords[0].x;
+            const y = coords[i].y - coords[0].y;
+            newCoords.push({ ...coords[i], x, y });
+
+            const R = Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2));
+            const Angle = Math.atan2(y, x); // https://www.omnicalculator.com/math/cartesian-to-polar
+
+            data.push({
+                N: coords[i].key,
+                X: x,
+                Y: y,
+                Angle,
+                'Polar radius': R
+            });
+        }
+
+        data.sort((a, b) => {
+            if (a.Angle < b.Angle) {
+                return -1;
+            } else if (a.Angle > b.Angle) {
+                return 1;
+            } else {
+                return b['Polar radius'] - a['Polar radius'];
+            }
+        });
+
+        return {
+            columns: ['N', 'X', 'Y', 'Angle', 'Polar radius'],
+            data,
+        };
+    }
+
     setEuclide(status: boolean) {
         this.isEuclide = status;
         setTimeout(() => {
@@ -330,6 +414,9 @@ export class DSSService {
         const distance = this.getDistance2Point([doc.CENTER!, ...doc.POINTS!], doc.PATHS!);
         const savingTable = this.calcSavingTable(distance.data);
         const savingPath = this.calcSavingPath(savingTable.data);
+        const qInfo = this.calcQ(Qij, doc.POINTS!);
+        const sweeping = this.calcSweeping(doc.POINTS!, doc.CENTER!);
+        const sweepingPath = this.calcSweepingPath(sweeping.data);
 
         const data = {
             ...doc,
@@ -338,16 +425,12 @@ export class DSSService {
             Qij,
             viewMode: this.dssData.value.viewMode,
             tables: {
-                Q: {
-                    columns: ['N', ...Object.keys(Qij[0]).filter(e => e.startsWith('P'))],
-                    data: Qij.map((e, i) => ({
-                        N: i + 1,
-                        ...Qij[i]
-                    })),
-                },
+                Q: qInfo,
                 Distance: distance,
                 SavingTable: savingTable,
                 SavingPath: savingPath,
+                Sweeping: sweeping,
+                SweepingPath: sweepingPath,
             }
         } as DSSData;
 
