@@ -39,7 +39,15 @@ export interface DSSData {
         SweepingPath: {
             columns: Array<string>,
             data: Array<any>
-        }
+        },
+        SweepingPrograms: {
+            columns: Array<string>,
+            data: Array<any>
+        },
+        ComparePrograms: {
+            columns: Array<string>,
+            data: Array<any>
+        },
     },
 };
 
@@ -57,7 +65,7 @@ export interface Path {
     points: Array<number>;
 };
 
-export type VIEW_MODE = 'paths' | 'saving' | 'programs' | 'sweeping';
+export type VIEW_MODE = 'paths' | 'saving' | 'saving programs' | 'sweeping' | 'sweeping programs';
 
 export enum PAGE_NAME {
     'Map',
@@ -65,4 +73,6 @@ export enum PAGE_NAME {
     'Part 2',
     'Part 3',
     'Part 4',
+    'Part 5',
+    'Part 6',
 };

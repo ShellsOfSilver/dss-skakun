@@ -1,0 +1,16 @@
+<div class="content" *ngIf="(dssData | async) as dss">
+    <div *ngIf="dss?.init">
+        <h1>Compare programs</h1>
+        <mat-divider></mat-divider>
+
+        <table mat-table [dataSource]="dss.tables.ComparePrograms.data" class="mat-elevation-z2 app-table">
+            <ng-container [matColumnDef]="cl" *ngFor="let cl of dss.tables.ComparePrograms.columns">
+                <th mat-header-cell *matHeaderCellDef> {{cl}} </th>
+                <td mat-cell *matCellDef="let element"> {{element[cl]}} </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="dss.tables.ComparePrograms.columns"></tr>
+            <tr mat-row *matRowDef="let row; columns: dss.tables.ComparePrograms.columns;"></tr>
+        </table>
+    </div>
+</div>

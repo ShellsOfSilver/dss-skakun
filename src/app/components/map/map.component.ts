@@ -221,7 +221,7 @@ export class MapComponent implements AfterViewInit {
     } else if (!this.dssService.isEuclide && dss.viewMode === 'sweeping') {
       const paths = dss.tables.SweepingPath.data[0]['Path'];
       this.setViewModeGalmiltonAndIsNotEuclide(dss, paths, '#0092d6');
-    } else if (this.dssService.isEuclide && dss.viewMode === 'programs') {
+    } else if (this.dssService.isEuclide && dss.viewMode === 'saving programs') {
       dss.tables.SavingPrograms.data
         .filter(e => e.key === this.currentProgram && e.Path)
         .forEach(e => {
@@ -229,8 +229,24 @@ export class MapComponent implements AfterViewInit {
           extraTextPaths.push({ color, text: `#${extraTextInx++}: ${e.Path}` });
           this.setViewModeGalmiltonAndIsEuclide(e.Path, color);
         });
-    } else if (!this.dssService.isEuclide && dss.viewMode === 'programs') {
+    } else if (!this.dssService.isEuclide && dss.viewMode === 'saving programs') {
       dss.tables.SavingPrograms.data
+        .filter(e => e.key === this.currentProgram && e.Path)
+        .forEach(e => {
+          const color = getColor();
+          extraTextPaths.push({ color, text: `#${extraTextInx++}: ${e.Path}` });
+          this.setViewModeGalmiltonAndIsNotEuclide(dss, e.Path, color)
+        });
+    } else if (this.dssService.isEuclide && dss.viewMode === 'sweeping programs') {
+      dss.tables.SweepingPrograms.data
+        .filter(e => e.key === this.currentProgram && e.Path)
+        .forEach(e => {
+          const color = getColor();
+          extraTextPaths.push({ color, text: `#${extraTextInx++}: ${e.Path}` });
+          this.setViewModeGalmiltonAndIsEuclide(e.Path, color);
+        });
+    } else if (!this.dssService.isEuclide && dss.viewMode === 'sweeping programs') {
+      dss.tables.SweepingPrograms.data
         .filter(e => e.key === this.currentProgram && e.Path)
         .forEach(e => {
           const color = getColor();
@@ -239,7 +255,7 @@ export class MapComponent implements AfterViewInit {
         });
     }
 
-    if (dss.viewMode === 'programs') {
+    if (dss.viewMode === 'saving programs' || dss.viewMode === 'sweeping programs') {
       this.extraText = [
         { text: 'Program: ' + this.currentProgram },
         ...extraTextPaths
@@ -270,7 +286,7 @@ export class MapComponent implements AfterViewInit {
 
           if (data.viewMode === 'saving') {
             this.extraText = [{ text: savingPaths }];
-          } else if (data.viewMode === 'programs') {
+          } else if (data.viewMode === 'saving programs' || data.viewMode === 'sweeping programs') {
             for (let i = 0; i < data.N_PROGRAMS; i++) {
               tmpPrograms.push('P' + (i + 1));
             }
@@ -293,7 +309,7 @@ export class MapComponent implements AfterViewInit {
   openSettings() {
     this.dialog.open(MapSettingsDialog, {
       data: {
-        viewMode: ['paths', 'saving', 'programs', 'sweeping'] as VIEW_MODE[],
+        viewMode: ['paths', 'saving', 'saving programs', 'sweeping', 'sweeping programs'] as VIEW_MODE[],
         programLables: this.programLables,
         extraText: this.extraText
       }

@@ -1,6 +1,6 @@
 <div class="content" *ngIf="(dssData | async) as dss">
     <div *ngIf="dss?.init">
-        <h1>Programs</h1>
+        <h1>Saving Programs</h1>
         <mat-divider></mat-divider>
 
         <table mat-table [dataSource]="dss.tables.SavingPrograms.data" class="mat-elevation-z2 app-table">

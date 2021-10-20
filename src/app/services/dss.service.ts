@@ -65,6 +65,14 @@ export class DSSService {
                     columns: [''],
                     data: [{}]
                 },
+                SweepingPrograms: {
+                    columns: [''],
+                    data: [{}]
+                },
+                ComparePrograms: {
+                    columns: [''],
+                    data: [{}]
+                },
             }
         });
     }
@@ -245,20 +253,44 @@ export class DSSService {
         };
     }
 
-    calcPrograms(dss: DSSData) {
+    comparePrograms(dss: DSSData) {
         const data: Array<any> = [];
-        const columns: Array<string> = ['N', 'Path', 'D'];
+        const columns: Array<string> = ['N', 'Saving', 'Sweeping'];
 
-        if (!this.isEuclide) {
-            columns.push('Distance');
+        let savingSum = 0;
+        let sweepingSum = 0;
+
+        for (let i = 0; i < dss.N_PROGRAMS; i++) {
+            const key = 'P' + (i + 1);
+
+            const sweeping = dss.tables.SweepingPrograms.data.find(e => e.key === key && e.N === 'Sum');
+            const saving = dss.tables.SavingPrograms.data.find(e => e.key === key && e.N === 'Sum');
+
+            savingSum += saving?.total;
+            sweepingSum += sweeping?.total;
+
+            data.push({ N: key, Saving: saving?.Distance, Sweeping: sweeping?.Distance });
         }
+
+        data.push({
+            N: 'Sum',
+            Saving: (+`${savingSum / 1000}`).toFixed(4) + ' km',
+            Sweeping: (+`${sweepingSum / 1000}`).toFixed(4) + ' km'
+        });
+
+        return { columns, data };
+    }
+
+    calcPrograms(dss: DSSData, key: string) {
+        const data: Array<any> = [];
+        const columns: Array<string> = ['N', 'Path', 'D', 'Distance'];
 
         const D = dss.D;
         const N_PROGRAMS = dss.N_PROGRAMS;
-        const SAVING = dss.tables.SavingPath.data[0]['Path'] as string;
+        const PATHS = (dss.tables as any)[key].data[0]['Path'] as string;
         const Qij: Array<any> = [];
 
-        SAVING.split('-')
+        PATHS.split('-')
             .forEach(point => {
                 if (+point) {
                     const el = dss.Qij.find(e => 1 + e.i === +point);
@@ -268,7 +300,7 @@ export class DSSService {
 
         for (let i = 0; i < N_PROGRAMS; i++) {
             const key = 'P' + (i + 1);
-
+            let totalDis = 0;
             data.push({ N: key, Path: '', D: '', key, Distance: '' });
 
             const paths: Array<{ Path: string, D: number }> = [];
@@ -307,6 +339,8 @@ export class DSSService {
                     }
                 })
 
+                totalDis += dis;
+
                 data.push({
                     N: inx + 1,
                     Path: p.Path,
@@ -315,6 +349,8 @@ export class DSSService {
                     Distance: (+`${dis / 1000}`).toFixed(4) + ' km'
                 });
             });
+
+            data.push({ N: 'Sum', Path: '', D: '', key, total: totalDis, Distance: (+`${totalDis / 1000}`).toFixed(4) + ' km' });
         }
 
         return { columns, data };
@@ -434,7 +470,9 @@ export class DSSService {
             }
         } as DSSData;
 
-        data.tables.SavingPrograms = this.calcPrograms(data);
+        data.tables.SavingPrograms = this.calcPrograms(data, 'SavingPath');
+        data.tables.SweepingPrograms = this.calcPrograms(data, 'SweepingPath');
+        data.tables.ComparePrograms = this.comparePrograms(data);
 
         console.log('data::', data);
         this.dssData.next(data);
