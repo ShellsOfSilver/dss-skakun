@@ -73,6 +73,10 @@ export class DSSService {
                     columns: [''],
                     data: [{}]
                 },
+                SolutionMatrix: {
+                    columns: [''],
+                    data: [{}]
+                },
             }
         });
     }
@@ -253,6 +257,203 @@ export class DSSService {
         };
     }
 
+    calcMSolutionMatrix(dss: DSSData) {
+        const data: Array<any> = [];
+        const columns: Array<string> = ['N'];
+        const bestProgramsName = dss.tables.ComparePrograms.data.find(e => e.N === 'Sum').top;
+        const bestProgramsData = (dss.tables as any)[bestProgramsName].data as Array<any>;
+
+        const pMaxProgramsLength = Math.min(...bestProgramsData.filter(e => e.N === 'Sum').map(e => e.size));
+        const pDTotalSum = {} as any;
+
+        for (let i = 0; i < dss.N_PROGRAMS; i++) {
+            const key = 'P' + (i + 1);
+            pDTotalSum[key] = 0;
+            const rj = bestProgramsData.find(e => e.N === 'Sum' && e.key === key).size;
+            dss.tables.Q.data.forEach(e => pDTotalSum[key] += e[key]);
+            columns.push(`${key} = ${rj}, [${pDTotalSum[key]}]`);
+        }
+
+        const E1 = Math.floor(pDTotalSum['P1'] / dss.D);
+        const Ermax = Math.floor((pDTotalSum['P' + dss.N_PROGRAMS] / dss.D)) + 2;
+        const Mz = Ermax - E1 + 1;
+        const cList = dss.C_LIST || [];
+
+        for (let i = 0; i < Mz; i++) {
+            const key = `E${i + 1} = ${pMaxProgramsLength + i}`;
+            const tmp: Record<string, any> = { N: key };
+
+            for (let j = 0; j < dss.N_PROGRAMS; j++) {
+                const pKey = columns[j + 1].split(' = ')[0];
+                const rj = bestProgramsData.find(e => e.N === 'Sum' && e.key === pKey).size;
+                const m = (pMaxProgramsLength + i);
+
+                const disPrograms = dss.tables.ComparePrograms.data.find(e => e.N === pKey);
+                const lRj = +(bestProgramsName === 'SavingPrograms' ? disPrograms.Saving : disPrograms.Sweeping).split(' ')[0];
+                const dSj = +pDTotalSum[pKey];
+
+                tmp[columns[j + 1]] = +((cList[0] * dSj)
+                - (cList[1] * lRj)
+                - (cList[2] * rj)
+                - (rj >= m ? (cList[3] * (rj - m)) : (cList[4] * (m - rj)))).toFixed(2)
+            }
+            data.push(tmp);
+        }
+
+        return this.calcOptimalNumberTransport(data, dss.Q_LIST || [], columns);
+    }
+
+    // http://ouek.onu.edu.ua/uploads/courses/smpr/Критерии%20принятия%20решений%20в%20условиях%20неопределенности.pdf
+    private calcOptimalNumberTransport(data: Array<any>, qList: Array<number>, columns: Array<string>) {
+        const pList = columns.filter(e => e.startsWith('P'));
+        const hwL = 0.5;
+        const hlV = 0.5;
+        let maxRowIJ: Array<number> = [];
+
+        columns.push('MM', 'BL', 'S', 'HW', 'HL', 'G', 'P');
+
+        // MM
+        let mmMax = {} as any;
+        data.forEach((row, inx) => {
+            let min = row[pList[0]];
+            pList.forEach((key, i) => {
+                if (row[key] < min) {
+                    min = row[key];
+                }
+                if (maxRowIJ[i] === undefined || row[key] > maxRowIJ[i]) {
+                    maxRowIJ[i] = row[key];
+                }
+            });
+
+            row['MM'] = min;
+            if (!mmMax.value || min > mmMax.value) {
+                mmMax.value = min;
+                mmMax.inx = inx + 1;
+            }
+        });
+
+        // BL
+        let blMax = {} as any;
+        data.forEach((row, inx) => {
+            let bl = 0;
+            pList.forEach((key, i) => {
+                bl += row[key] * qList[i];
+            });
+
+            row['BL'] = +bl.toFixed(2);
+            if (!blMax.value || row['BL'] > blMax.value) {
+                blMax.value = row['BL'];
+                blMax.inx = inx + 1;
+            }
+        });
+
+        // S
+        let sMax = {} as any;
+        data.forEach((row, inx) => {
+            let s: number;
+            pList.forEach((key, i) => {
+                const value = maxRowIJ[i] - row[key];
+                if (s === undefined || value > s) {
+                    s = value;
+                }
+            });
+
+            row['S'] = +(s!).toFixed(2);
+            if (!sMax.value || row['S'] < sMax.value) {
+                sMax.value = row['S'];
+                sMax.inx = inx + 1;
+            }
+        });
+
+        // HW
+        let hwMax = {} as any;
+        data.forEach((row, inx) => {
+            let max: undefined;
+            let min: undefined;
+            pList.forEach((key) => {
+                if (max === undefined || row[key] > max!) {
+                    max = row[key];
+                }
+                if (min === undefined || row[key] < min!) {
+                    min = row[key];
+                }
+            });
+
+            row['HW'] = +((hwL * min!) + ((1 - hwL) * max!)).toFixed(2);
+            if (!hwMax.value || row['HW'] > hwMax.value) {
+                hwMax.value = row['HW'];
+                hwMax.inx = inx + 1;
+            }
+        });
+
+        // HL
+        let hlMax = {} as any;
+        data.forEach((row, inx) => {
+            let sum = 0;
+            let min: undefined;
+            pList.forEach((key, i) => {
+                sum += row[key] * qList[i];
+
+                if (min === undefined || row[key] < min!) {
+                    min = row[key];
+                }
+            });
+
+            row['HL'] = +((hlV * sum) + (1 - hlV) * min!).toFixed(2);
+            if (!hlMax.value || row['HL'] > hlMax.value) {
+                hlMax.value = row['HL'];
+                hlMax.inx = inx + 1;
+            }
+        });
+
+        // G
+        let gMax = {} as any;
+        const maxGEij = Math.max(...maxRowIJ) + 1;
+        data.forEach((row, inx) => {
+            let min: number;
+            pList.forEach((key, i) => {
+                const value = (maxGEij >= 0 ? row[key] - (maxGEij + 1) : row[key]) * qList[i];
+
+                if (min === undefined || value < min!) {
+                    min = value;
+                }
+            });
+
+            row['G'] = +(min!).toFixed(2);
+            if (!gMax.value || row['G'] > gMax.value) {
+                gMax.value = row['G'];
+                gMax.inx = inx + 1;
+            }
+        });
+
+        // P
+        let pMax = {} as any;
+        data.forEach((row, inx) => {
+            let mul = 1;
+            pList.forEach((key) => {
+                mul += row[key];
+            });
+
+            row['P'] = +(mul).toFixed(2);
+            if (!pMax.value || row['P'] > pMax.value) {
+                pMax.value = row['P'];
+                pMax.inx = inx + 1;
+            }
+        });
+
+        data.push({
+            N: 'Z',
+            MM: mmMax.value, BL: blMax.value, S: sMax.value,
+            HW: hwMax.value, HL: hlMax.value, G: gMax.value, P: pMax.value
+        });
+        data.push({
+            N: 'Opt.m',
+            MM: mmMax.inx, BL: blMax.inx, S: sMax.inx,
+            HW: hwMax.inx, HL: hlMax.inx, G: gMax.inx, P: pMax.inx
+        });
+        return { columns, data };
+    }
+
     comparePrograms(dss: DSSData) {
         const data: Array<any> = [];
         const columns: Array<string> = ['N', 'Saving', 'Sweeping'];
@@ -275,7 +476,8 @@ export class DSSService {
         data.push({
             N: 'Sum',
             Saving: (+`${savingSum / 1000}`).toFixed(4) + ' km',
-            Sweeping: (+`${sweepingSum / 1000}`).toFixed(4) + ' km'
+            Sweeping: (+`${sweepingSum / 1000}`).toFixed(4) + ' km',
+            top: savingSum > sweepingSum ? 'SweepingPrograms' : 'SavingPrograms',
         });
 
         return { columns, data };
@@ -309,16 +511,10 @@ export class DSSService {
 
             for (let j = 0; j < Qij.length; j++) {
                 const q = Qij[j];
-                const nextQ = (Qij[j + 1] || {});
 
-                if (nextQ[key] && tmpD - q[key] >= 0) {
+                if (tmpD - q[key] >= 0) {
                     tmpPath += '-' + (q.i + 1);
                     tmpD -= q[key];
-                } else if (!nextQ[key]) {
-                    tmpPath += '-' + (q.i + 1);
-                    tmpD -= q[key];
-                    tmpPath += '-0';
-                    paths.push({ Path: tmpPath, D: +(D - tmpD).toFixed(4) });
                 } else {
                     tmpPath += '-0';
                     paths.push({ Path: tmpPath, D: +(D - tmpD).toFixed(4) });
@@ -350,7 +546,7 @@ export class DSSService {
                 });
             });
 
-            data.push({ N: 'Sum', Path: '', D: '', key, total: totalDis, Distance: (+`${totalDis / 1000}`).toFixed(4) + ' km' });
+            data.push({ N: 'Sum', Path: '', D: '', key, size: paths.length, total: totalDis, Distance: (+`${totalDis / 1000}`).toFixed(4) + ' km' });
         }
 
         return { columns, data };
@@ -473,6 +669,7 @@ export class DSSService {
         data.tables.SavingPrograms = this.calcPrograms(data, 'SavingPath');
         data.tables.SweepingPrograms = this.calcPrograms(data, 'SweepingPath');
         data.tables.ComparePrograms = this.comparePrograms(data);
+        data.tables.SolutionMatrix = this.calcMSolutionMatrix(data);
 
         console.log('data::', data);
         this.dssData.next(data);
@@ -587,6 +784,8 @@ export class DSSService {
             POINTS: data.POINTS,
             PATHS: data.PATHS,
             N_PROGRAMS: data.N_PROGRAMS,
+            C_LIST: data.C_LIST,
+            Q_LIST: data.Q_LIST,
             D: data.D,
             updated: new Date().getTime()
         };
@@ -601,6 +800,8 @@ export class DSSService {
                     POINTS: doc.POINTS,
                     D: doc.D,
                     updated: doc.updated,
+                    C_LIST: doc.C_LIST,
+                    Q_LIST: doc.Q_LIST,
                 })
                 .then(async res => {
                     id = res.id;
@@ -624,6 +825,8 @@ export class DSSService {
                     N_PROGRAMS: doc.N_PROGRAMS,
                     POINTS: doc.POINTS,
                     D: doc.D,
+                    C_LIST: doc.C_LIST,
+                    Q_LIST: doc.Q_LIST,
                     updated: doc.updated,
                 })
                 .then(async res => {

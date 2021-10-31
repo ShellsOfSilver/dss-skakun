@@ -42,6 +42,41 @@
                         </mat-error>
                     </mat-form-field>
                 </div>
+                <p class="title">Cost parameters</p>
+                <div class="dash-border">
+                    <div formArrayName="C_LIST" class="point-container">
+                        <div class="programs-container">
+                            <div class="program-item" *ngFor="let prog of form.get('C_LIST')?.controls; let j=index">
+                                <mat-form-field class="min-width" appearance="fill" [formGroupName]="j">
+                                    <input type="text" matInput formControlName="c" [errorStateMatcher]="matcher"
+                                        placeholder="Ex. 2500">
+                                    <mat-label class="key-num" matPrefix>C{{j + 1}}</mat-label>
+                                    <mat-error *ngIf="prog?.get('c')?.hasError('required')">
+                                        C is <strong>required</strong>
+                                    </mat-error>
+                                </mat-form-field>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                <p class="title">Probabilities of occurrence</p>
+                <div class="dash-border">
+                    <div formArrayName="Q_LIST" class="point-container">
+                        <div class="programs-container">
+                            <div class="program-item" *ngFor="let prog of form.get('Q_LIST')?.controls; let j=index">
+                                <mat-form-field class="min-width" appearance="fill" [formGroupName]="j">
+                                    <input type="text" matInput formControlName="q" [errorStateMatcher]="matcher"
+                                        placeholder="Ex. 0.25">
+                                    <mat-label class="key-num" matPrefix>Q{{j + 1}}</mat-label>
+                                    <mat-error *ngIf="prog?.get('q')?.hasError('required')">
+                                        Q is <strong>required</strong>
+                                    </mat-error>
+                                </mat-form-field>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <p class="title">Center</p>
                 <div class="dash-border" formGroupName="CENTER">
                     <mat-form-field class="full-width" appearance="fill">

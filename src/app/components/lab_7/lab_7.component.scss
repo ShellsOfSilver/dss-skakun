@@ -1,0 +1,32 @@
+.content {
+    padding: 0 20px;
+    overflow: auto;
+    height: calc(100vh - 112px);
+
+    h1 {
+        font-weight: 400;
+        font-size: 20px;
+        padding: 16px 0 6px;
+        margin: 0;
+    }
+
+    mat-divider {
+        padding-bottom: 14px;
+    }
+
+    .app-table {
+        width: 100%;
+
+        .mat-column-N {
+            width: 60px;
+            border-right: 1px solid dimgrey;
+            padding-right: 24px;
+            text-align: center;
+            padding-left: 24px !important;
+        }
+          
+        .mat-cell, .mat-header-cell {
+            padding-left: 16px;
+        }
+    }
+}

@@ -1,7 +1,7 @@
-import { AfterViewInit, Component, Inject, OnDestroy } from '@angular/core';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { FormArray, FormBuilder, FormControl, FormGroup, FormGroupDirective, NgForm, Validators } from '@angular/forms';
+import { AfterViewInit, Component, Inject, OnDestroy } from '@angular/core';
+import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { ErrorStateMatcher } from '@angular/material/core';
 
 import { Subject, timer } from 'rxjs';
@@ -82,7 +82,9 @@ export class ManagerDialog implements AfterViewInit, OnDestroy {
         'xy': this.fb.control(documentData.CENTER?.x ? `${documentData.CENTER?.x}, ${documentData.CENTER?.y}` : '', [Validators.required]),
         'key': this.fb.control(documentData.CENTER?.key || 0, [Validators.required]),
       }),
-      'POINTS': this.fb.array(points)
+      'POINTS': this.fb.array(points),
+      'C_LIST': this.generateCList(5, documentData.C_LIST || []),
+      'Q_LIST': this.generateQList(documentData.N_PROGRAMS || dValue.N_PROGRAMS, documentData.Q_LIST || []),
     });
 
     this.form.valueChanges
@@ -108,6 +110,10 @@ export class ManagerDialog implements AfterViewInit, OnDestroy {
           if (+this.subProgramsLen !== +value.N_PROGRAMS) {
             this.subProgramsLen = value.N_PROGRAMS;
 
+            const controls = this.generateQList(this.subProgramsLen, value.Q_LIST.map((cL: any) => +cL.q)).controls;
+            (this.form.get('Q_LIST')! as FormArray).clear();
+            controls.forEach((ctrl, inx) => (this.form.get('Q_LIST')! as FormArray).insert(inx, ctrl));
+
             (this.form.get('POINTS')! as FormArray).controls
             .forEach((control) => {
               const value = (control as FormGroup).get('programs')?.value;
@@ -132,6 +138,24 @@ export class ManagerDialog implements AfterViewInit, OnDestroy {
 
     this.isMapClick = null;
   }
+
+  private generateQList(len: number, oldValue: Array<number>) {
+    const controls = [];
+    for (let i = 0; i < len; i++) {
+      const el = (oldValue || [])[i];
+      controls.push(this.fb.group({ 'q': this.fb.control(el, [Validators.required]) }));
+    }
+    return this.fb.array(controls);
+  };
+
+  private generateCList(len: number, oldValue: Array<number>) {
+    const controls = [];
+    for (let i = 0; i < len; i++) {
+      const el = (oldValue || [])[i];
+      controls.push(this.fb.group({ 'c': this.fb.control(el, [Validators.required]) }));
+    }
+    return this.fb.array(controls);
+  };
 
   private generatePrograms(len: number, oldValue?: Array<{pr: string}>) {
     const controls = [];
@@ -322,6 +346,13 @@ export class ManagerDialog implements AfterViewInit, OnDestroy {
 
     const points: Array<Point> = [];
     const value = this.form.value;
+    const qList = value.Q_LIST.map((cL: any) => +cL.q);
+
+    if (qList.reduce((a: number, b: number) => a + b, 0) !== 1) {
+      this._snackBar.open('The sum of the "Probability of occurrence" must be equal to 1', 'OK', { duration: 2000 });
+      return;
+    }
+
     this.isLoading = 0.1;
 
     const setPoint = (point: any) => {
@@ -386,6 +417,8 @@ export class ManagerDialog implements AfterViewInit, OnDestroy {
       await this.dssService.setDocument({
         ...this.documentData,
         POINTS: points,
+        C_LIST: value.C_LIST.map((cL: any) => +cL.c),
+        Q_LIST: qList,
         PATHS: localPaths,
         NAME: value.NAME,
         N_PROGRAMS: value.N_PROGRAMS,

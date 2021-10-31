@@ -18,7 +18,8 @@ export class HomeComponent {
     PAGE_NAME[PAGE_NAME['Part 3']],
     PAGE_NAME[PAGE_NAME['Part 4']],
     PAGE_NAME[PAGE_NAME['Part 5']],
-    PAGE_NAME[PAGE_NAME['Part 6']]
+    PAGE_NAME[PAGE_NAME['Part 6']],
+    PAGE_NAME[PAGE_NAME['Part 7']]
   ];
 
   constructor(

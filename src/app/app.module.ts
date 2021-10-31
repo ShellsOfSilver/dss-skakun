@@ -20,6 +20,7 @@ import { Lab3Component } from './components/lab_3/lab_3.component';
 import { Lab4Component } from './components/lab_4/lab_4.component';
 import { Lab5Component } from './components/lab_5/lab_5.component';
 import { Lab6Component } from './components/lab_6/lab_6.component';
+import { Lab7Component } from './components/lab_7/lab_7.component';
 import { HomeComponent } from './components/home/home.component';
 import { MapComponent } from './components/map/map.component';
 import { AppComponent } from './app.component';
@@ -46,6 +47,7 @@ const firebaseConfig = {
     Lab4Component,
     Lab5Component,
     Lab6Component,
+    Lab7Component,
     LibraryDialog,
     ManagerDialog,
     HeaderComponent,

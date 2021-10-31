@@ -1,6 +1,8 @@
 export interface DSSData {
-    updated?: number,
-    currentProgram?: string,
+    updated?: number;
+    currentProgram?: string;
+    C_LIST?: Array<number>;
+    Q_LIST?: Array<number>;
     ID?: string;
     init: boolean;
     D: number;
@@ -13,42 +15,46 @@ export interface DSSData {
     viewMode: VIEW_MODE;
     tables: {
         Q: {
-            columns: Array<string>,
+            columns: Array<string>;
             data: Array<any>
-        },
+        };
         Distance: {
-            columns: Array<string>,
+            columns: Array<string>;
             data: Array<any>
-        },
+        };
         SavingTable: {
-            columns: Array<string>,
+            columns: Array<string>;
             data: Array<any>
-        },
+        };
         SavingPath: {
-            columns: Array<string>,
+            columns: Array<string>;
             data: Array<any>
-        },
+        };
         SavingPrograms: {
-            columns: Array<string>,
+            columns: Array<string>;
             data: Array<any>
-        },
+        };
         Sweeping: {
-            columns: Array<string>,
+            columns: Array<string>;
             data: Array<any>
-        },
+        };
         SweepingPath: {
-            columns: Array<string>,
+            columns: Array<string>;
             data: Array<any>
-        },
+        };
         SweepingPrograms: {
-            columns: Array<string>,
+            columns: Array<string>;
             data: Array<any>
-        },
+        };
         ComparePrograms: {
-            columns: Array<string>,
+            columns: Array<string>;
             data: Array<any>
-        },
-    },
+        };
+        SolutionMatrix: {
+            columns: Array<string>;
+            data: Array<any>
+        };
+    };
 };
 
 export interface Point {
@@ -75,4 +81,5 @@ export enum PAGE_NAME {
     'Part 4',
     'Part 5',
     'Part 6',
+    'Part 7',
 };
